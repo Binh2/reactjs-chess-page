@@ -1,0 +1,43 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+
+html {
+
+}
+
+.board, .square {
+  --board-width: min(90vh, 90vw);
+}
+
+.square {
+  border: 1px solid black;
+  font-size: calc(var(--board-width) / 11.5);
+}
+
+.board {
+  display: grid;
+  grid-template-rows: repeat(8, 1fr);
+  grid-gap: 0;
+  gap: 0;
+  width: var(--board-width);
+  height: var(--board-width);
+}
+
+.board div {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-gap: 0;
+  gap: 0;
+}
+
+.board div:nth-child(odd) .square:nth-child(even), .board div:nth-child(even) .square:nth-child(odd) {
+  --dark-square-color: gray;
+  background: var(--dark-square-color);
+}
+
+.board div:nth-child(odd) .square:nth-child(odd), .board div:nth-child(even) .square:nth-child(even) {
+  --light-square-color: white;
+  background: var(--light-square-color);
+}

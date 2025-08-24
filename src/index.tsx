@@ -32,7 +32,6 @@ const initialBoard = [
 ]
 
 type BoardType = string[][]
-type HistoryType = { piece: string, from: [number, number], to: [number, number] }[];
 type PossibleMovesType = ([number, number] | [number, number, boolean])[];
 type HasMovedType = { wK: boolean, wR1: boolean, wR2: boolean, bK: boolean, bR1: boolean, bR2: boolean };
 
@@ -59,10 +58,16 @@ function removePiece(board: BoardType, at: [number, number]) {
 	newBoard[row][col] = '.';
 	return newBoard;
 }
-function getPossibleMoves(board: BoardType, history: HistoryType, hasMoved: HasMovedType, from: [number, number] ) {
+function getPossibleMoves(board: BoardType, history: HistoryType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number] ) {
 	let [fromRow, fromCol] = from;
 	const piece = board[fromRow][fromCol];
 	let moves: PossibleMovesType = [];
+	
+	// selected piece is white
+	if (isWhiteTurn && !Object.values(white).includes(piece)) return [];
+	// selected piece is black
+	if (!isWhiteTurn && !Object.values(black).includes(piece)) return [];
+
 	if (piece === white.pawn || piece === black.pawn) { // Pawn moves
 		let direction = piece === white.pawn ? -1 : 1;
 
@@ -216,17 +221,28 @@ function getPossibleMoves(board: BoardType, history: HistoryType, hasMoved: HasM
 	}
 	return []; 
 }
+
+
+// type HistoryType = { fromPiece: string, toPiece: string, from: [number, number], to: [number, number] }[];
+// function useBoard() {
+// 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
+// 	const [ history, setHistory ] = useState<HistoryType>([]);
+// 	const [ historyIndex, setHistoryIndex ] = useState<number>(-1);
+// }
+
+type HistoryType = { piece: string, from: [number, number], to: [number, number] }[];
 type SelectedPieceType = [number, number] | null;
 function Board() {
 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
+	const [ isWhiteTurn, setIsWhiteTurn ] = useState<boolean>(true);
 	const [ selected, setSelected ] = useState<SelectedPieceType>(null);
 	const [ history, setHistory ] = useState<HistoryType>([]);
 	const [ possibleMoves, setPossibleMoves ] = useState<PossibleMovesType>([]);
 	const [ hasMoved, setHasMoved ] = useState<HasMovedType>({ wK: false, wR1: false, wR2: false, bK: false, bR1: false, bR2: false });
+	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
 
-	function handleClick(row: number, col: number) {
-		console.log("click", 7-row, col, selected);
-		console.log("possibleMoves", possibleMoves);
+
+	function handleSelect(row: number, col: number) {
 		// click on empty square without having selected a piece -> do nothing
 		if (!selected && board[row][col] === '.') { 
 			return;
@@ -235,7 +251,20 @@ function Board() {
 		// First click on a piece -> select that piece
 		if (!selected) {
 			setSelected([row, col]);
-			setPossibleMoves(getPossibleMoves(board, history, hasMoved, [row, col]));
+			setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
+			return;
+		}
+
+		// Click on the selected piece again -> to cancel promotion
+		if (promotionSquare && selected[0] === row && selected[1] === col) {
+			setPromotionSquare(null);
+			return;
+		}
+
+		// Click on the selected piece again -> deselect piece
+		if (selected[0] === row && selected[1] === col) { 
+			setSelected(null);
+			setPossibleMoves([]);
 			return;
 		}
 
@@ -245,14 +274,24 @@ function Board() {
 			(Object.values(black).includes(board[selected[0]][selected[1]]) && Object.values(black).includes(board[row][col]))
 		)) {
 			setSelected([row, col]);
-			setPossibleMoves(getPossibleMoves(board, history, hasMoved, [row, col]));
+			setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
 			return;
 		}
 
 		// click on non-possible move square (disable this if you want to allow non-possible moves) -> deselect piece
 		if (!possibleMoves.some(p => p[0] === row && p[1] === col)) { 
+			// Select non-possible opponent piece -> select that piece instead
+			if (board[row][col] !== '.' && (
+				(Object.values(white).includes(board[selected[0]][selected[1]]) && Object.values(black).includes(board[row][col])) ||
+				(Object.values(black).includes(board[selected[0]][selected[1]]) && Object.values(white).includes(board[row][col]))
+			)) {
+				setSelected([row, col]);
+				setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
+				return;
+			}
 			setSelected(null);
 			setPossibleMoves([]);
+			setPromotionSquare(null);
 			return;
 		}
 
@@ -273,13 +312,17 @@ function Board() {
 
 		// Pawn: Promotion
 		if (board[selected[0]][selected[1]] === white.pawn && row === 0) {
-			let newBoard = movePiece(board, selected, [row, col]);
-			newBoard[row][col] = white.queen; // auto-promote to queen
-			setBoard(newBoard);
+			// let newBoard = movePiece(board, selected, [row, col]);
+			// newBoard[row][col] = white.queen; // auto-promote to queen
+			// setBoard(newBoard);
+			setPromotionSquare({piece: white.pawn, at: [row, col]});
+			return;
 		} else if (board[selected[0]][selected[1]] === black.pawn && row === 7) {
-			let newBoard = movePiece(board, selected, [row, col]);
-			newBoard[row][col] = black.queen; // auto-promote to queen
-			setBoard(newBoard);
+			// let newBoard = movePiece(board, selected, [row, col]);
+			// newBoard[row][col] = black.queen; // auto-promote to queen
+			// setBoard(newBoard);
+			setPromotionSquare({piece: black.pawn, at: [row, col]});
+			return;
 		}
 		
 		// Pawn: En passant capture
@@ -293,8 +336,23 @@ function Board() {
 		// normal move or capture
 		else setBoard(movePiece(board, selected, [row, col]));
 
+		setIsWhiteTurn(!isWhiteTurn);
 		setHistory([...history, { piece: board[selected[0]][selected[1]], from: selected, to: [row, col] }]);
 		setSelected(null);
+		setPossibleMoves([]);
+	}
+
+	function handlePromotion(newPiece: string) {
+		if (!promotionSquare) return;
+		if (!selected) return; // for testing
+
+		let newBoard = movePiece(board, selected, promotionSquare.at);
+		newBoard[promotionSquare.at[0]][promotionSquare.at[1]] = newPiece;
+		setBoard(newBoard);
+		setIsWhiteTurn(!isWhiteTurn);
+		setHistory([...history, { piece: promotionSquare.piece, from: [promotionSquare.at[0] + (newPiece === white.pawn ? 1 : -1), promotionSquare.at[1]], to: promotionSquare.at }]);
+		setSelected(null);
+		setPromotionSquare(null);
 		setPossibleMoves([]);
 	}
 
@@ -308,24 +366,29 @@ function Board() {
 						(selected && i === selected[0] && j === selected[1] ? "--selected ": "") +
 						(possibleMoves.some(p => p[0] === i && p[1] === j) ? "--possible ": "")
 					} 
-					piece={piece} row={i} col={j} onClick={handleClick} />
+					piece={piece} row={i} col={j} onClick={handleSelect} />
 				) } </>
 			) } </>
 		</div>
-		<PromotionMenu piece={white.pawn} at={[0, 3]} />
+		{ promotionSquare && <PromotionMenu piece={promotionSquare.piece} at={promotionSquare.at} onMouseDown={handlePromotion} /> }
 	</div>;
 }
-function PromotionMenu({ piece, at }: { piece: string, at: [number, number] }) {
+function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number, number], onMouseDown: (newPiece: string) => void }) {
 	const direction = piece === white.pawn ? -1 : 1;
+	console.log(at)
 	return <div className="promotion-menu">
-		<Square style={{gridRow: at[0]-direction, gridColumn: at[1]+1}} 
-			piece={white.queen} row={at[0]} col={at[1]} onClick={() => {}} />
-		<Square style={{gridRow: at[0]-direction*2, gridColumn: at[1]+1}} 
-			piece={white.rook} row={at[0]} col={at[1]} onClick={() => {}} />
-		<Square style={{gridRow: at[0]-direction*3, gridColumn: at[1]+1}} 
-			piece={white.bishop} row={at[0]} col={at[1]} onClick={() => {}} />
-		<Square style={{gridRow: at[0]-direction*4, gridColumn: at[1]+1}} 
-			piece={white.knight} row={at[0]} col={at[1]} onClick={() => {}} />
+		<Square style={{gridRow: at[0]+1, gridColumn: at[1]+1}} 
+			piece={white.queen} row={at[0]} col={at[1]}
+			onClick={() => onMouseDown(piece === white.pawn ? white.queen : black.queen)} />
+		<Square style={{gridRow: at[0]+1-direction, gridColumn: at[1]+1}} 
+			piece={white.rook} row={at[0]} col={at[1]} 
+			onClick={() => onMouseDown(piece === white.pawn ? white.rook : black.rook)} />
+		<Square style={{gridRow: at[0]+1-direction*2, gridColumn: at[1]+1}} 
+			piece={white.bishop} row={at[0]} col={at[1]} 
+			onClick={() => onMouseDown(piece === white.pawn ? white.bishop : black.bishop)}  />
+		<Square style={{gridRow: at[0]+1-direction*3, gridColumn: at[1]+1}} 
+			piece={white.knight} row={at[0]} col={at[1]} 
+			onClick={() => onMouseDown(piece === white.pawn ? white.knight : black.knight)}  />
 	</div>;
 }
 

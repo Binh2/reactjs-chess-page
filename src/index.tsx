@@ -52,13 +52,15 @@ function movePiece(board: BoardType, from: [number, number], to: [number, number
 	newBoard[fromRow][fromCol] = '.';
 	return newBoard;
 }
-function removePiece(board: BoardType, at: [number, number]) {
+function removePiece(board: BoardType, at: [number, number]) { // for en passant
+	console.log("removePiece", at)
 	let [row, col] = at;
 	let newBoard = board.map(r => r.slice())
 	newBoard[row][col] = '.';
 	return newBoard;
 }
-function getPossibleMoves(board: BoardType, history: HistoryType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number] ) {
+type PrevMoveType = {piece: string, from: [number, number], to: [number, number]} | null;
+function getPossibleMoves(board: BoardType, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number] ) {
 	let [fromRow, fromCol] = from;
 	const piece = board[fromRow][fromCol];
 	let moves: PossibleMovesType = [];
@@ -95,15 +97,15 @@ function getPossibleMoves(board: BoardType, history: HistoryType, isWhiteTurn: b
 			moves.push([fromRow + direction, fromCol + 1]);
 		}
 
+		console.log(prevMove)
 		// Pawn: En passant captures
-		if (history.length > 0) {
-			const lastMove = history[history.length - 1];
-			if (lastMove.piece === (piece === white.pawn ? black.pawn : white.pawn) &&
-				Math.abs(lastMove.from[0] - lastMove.to[0]) === 2 && // last move was a 2-square pawn move
-				lastMove.to[0] === fromRow && // last move ended on the same row as the pawn
-				Math.abs(lastMove.to[1] - fromCol) === 1) { // last move ended next to the pawn
-				moves.push([fromRow + direction, lastMove.to[1], true]); // true indicates en passant
-			}
+		if (!prevMove) return moves;
+		if (
+			prevMove.piece === (piece === white.pawn ? black.pawn : white.pawn) &&
+			Math.abs(prevMove.from[0] - prevMove.to[0]) === 2 && // last move was a 2-square pawn move
+			prevMove.to[0] === fromRow && // last move ended on the same row as the pawn
+			Math.abs(prevMove.to[1] - fromCol) === 1) { // last move ended next to the pawn
+			moves.push([fromRow + direction, prevMove.to[1], true]); // true indicates en passant
 		}
 		return moves;
 	} else if (piece === white.rook || piece === black.rook) { // Rook moves
@@ -224,23 +226,77 @@ function getPossibleMoves(board: BoardType, history: HistoryType, isWhiteTurn: b
 
 
 // type HistoryType = { fromPiece: string, toPiece: string, from: [number, number], to: [number, number] }[];
-// function useBoard() {
-// 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
-// 	const [ history, setHistory ] = useState<HistoryType>([]);
-// 	const [ historyIndex, setHistoryIndex ] = useState<number>(-1);
-// }
+type HistoryType = string[][][];
+function useBoard() {
+	const [ board, setBoard ] = useState<BoardType>(initialBoard);
+	const [ history, setHistory ] = useState<HistoryType>([initialBoard]);
+	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
+	const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
+	const [ hasMoved, setHasMoved ] = useState<HasMovedType>({ wK: false, wR1: false, wR2: false, bK: false, bR1: false, bR2: false });
 
-type HistoryType = { piece: string, from: [number, number], to: [number, number] }[];
+	function isWhiteTurn() {
+		return historyIndex % 2 === 0;
+	}
+
+	function handleMove(from: [number, number], to: [number, number]) {
+		let newBoard = board;
+		// First white Rook or King moved
+		if (board[from[0]][from[1]] === white.rook) {
+			if (from[0] === 7 && from[1] === 0) setHasMoved({...hasMoved, wR1: true});
+			else if (from[0] === 7 && from[1] === 7) setHasMoved({...hasMoved, wR2: true});
+		} else if (board[from[0]][from[1]] === white.king) {
+			if (from[0] === 7 && from[1] === 4) setHasMoved({...hasMoved, wK: true});
+		}
+		// First black Rook or King moved
+		else if (board[from[0]][from[1]] === black.rook) {
+			if (from[0] === 0 && from[1] === 0) setHasMoved({...hasMoved, bR1: true});
+			else if (from[0] === 0 && from[1] === 7) setHasMoved({...hasMoved, bR2: true});
+		} else if (board[from[0]][from[1]] === black.king) {
+			if (from[0] === 0 && from[1] === 4) setHasMoved({...hasMoved, bK: true});
+		}
+
+		// King: Castling
+		if ((board[from[0]][from[1]] === white.king || board[from[0]][from[1]] === black.king) && 
+			getPossibleMoves(board, prevMove, isWhiteTurn(), hasMoved, from).some(p => p[0] === to[0] && p[1] === to[1] && p[2] === true)) {
+			if (to[1] === 2) { // Queenside castling
+				newBoard = movePiece(newBoard, from, to);// move the king
+				newBoard = movePiece(newBoard, [from[0], 0], [from[0], 3]); // move the rook
+			} else if (to[1] === 6) { // kingside castling
+				newBoard = movePiece(newBoard, from, to); // move the king
+				newBoard = movePiece(newBoard, [from[0], 7], [from[0], 5]); // move the rook
+			}
+			setBoard(newBoard);
+		}
+
+		// Pawn: En passant capture
+		else if ((board[from[0]][from[1]] === white.pawn || 
+			board[from[0]][from[1]] === black.pawn) && 
+			getPossibleMoves(board, prevMove, isWhiteTurn(), hasMoved, from).some(p => p[0] === to[0] && p[1] === to[1] && p[2] === true)) {
+			let direction = board[from[0]][from[1]] === white.pawn ? -1 : 1;
+			setBoard(removePiece(movePiece(board, from, to), [to[0] - direction, to[1]]));
+		}
+
+		// normal move or capture
+		else setBoard(movePiece(board, from, to));
+
+		setPrevMove({ piece: board[from[0]][from[1]], from, to });
+		setHistory([...history, newBoard]);
+		setHistoryIndex(historyIndex + 1);
+	}
+
+	return { 
+		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove,
+		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, prevMove, isWhiteTurn(), hasMoved, from)
+	};
+}
+
+// type HistoryType = { piece: string, from: [number, number], to: [number, number] }[];
 type SelectedPieceType = [number, number] | null;
 function Board() {
-	const [ board, setBoard ] = useState<BoardType>(initialBoard);
-	const [ isWhiteTurn, setIsWhiteTurn ] = useState<boolean>(true);
 	const [ selected, setSelected ] = useState<SelectedPieceType>(null);
-	const [ history, setHistory ] = useState<HistoryType>([]);
 	const [ possibleMoves, setPossibleMoves ] = useState<PossibleMovesType>([]);
-	const [ hasMoved, setHasMoved ] = useState<HasMovedType>({ wK: false, wR1: false, wR2: false, bK: false, bR1: false, bR2: false });
 	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
-
+	const { board, prevMove, isWhiteTurn, hasMoved, handleMove, getPossibleMoves } = useBoard();
 
 	function handleSelect(row: number, col: number) {
 		// click on empty square without having selected a piece -> do nothing
@@ -251,7 +307,7 @@ function Board() {
 		// First click on a piece -> select that piece
 		if (!selected) {
 			setSelected([row, col]);
-			setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
+			setPossibleMoves(getPossibleMoves([row, col]));
 			return;
 		}
 
@@ -274,7 +330,7 @@ function Board() {
 			(Object.values(black).includes(board[selected[0]][selected[1]]) && Object.values(black).includes(board[row][col]))
 		)) {
 			setSelected([row, col]);
-			setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
+			setPossibleMoves(getPossibleMoves([row, col]));
 			return;
 		}
 
@@ -286,7 +342,7 @@ function Board() {
 				(Object.values(black).includes(board[selected[0]][selected[1]]) && Object.values(white).includes(board[row][col]))
 			)) {
 				setSelected([row, col]);
-				setPossibleMoves(getPossibleMoves(board, history, isWhiteTurn, hasMoved, [row, col]));
+				setPossibleMoves(getPossibleMoves([row, col]));
 				return;
 			}
 			setSelected(null);
@@ -295,20 +351,8 @@ function Board() {
 			return;
 		}
 
-		// White Rook or King moved
-		if (board[selected[0]][selected[1]] === white.rook) {
-			if (selected[0] === 7 && selected[1] === 0) setHasMoved({...hasMoved, wR1: true});
-			else if (selected[0] === 7 && selected[1] === 7) setHasMoved({...hasMoved, wR2: true});
-		} else if (board[selected[0]][selected[1]] === white.king) {
-			if (selected[0] === 7 && selected[1] === 4) setHasMoved({...hasMoved, wK: true});
-		}
-		// Black Rook or King moved
-		else if (board[selected[0]][selected[1]] === black.rook) {
-			if (selected[0] === 0 && selected[1] === 0) setHasMoved({...hasMoved, bR1: true});
-			else if (selected[0] === 0 && selected[1] === 7) setHasMoved({...hasMoved, bR2: true});
-		} else if (board[selected[0]][selected[1]] === black.king) {
-			if (selected[0] === 0 && selected[1] === 4) setHasMoved({...hasMoved, bK: true});
-		}
+		handleMove(selected, [row, col]);
+
 
 		// Pawn: Promotion
 		if (board[selected[0]][selected[1]] === white.pawn && row === 0) {
@@ -325,19 +369,6 @@ function Board() {
 			return;
 		}
 		
-		// Pawn: En passant capture
-		else if ((board[selected[0]][selected[1]] === white.pawn || 
-			board[selected[0]][selected[1]] === black.pawn) && 
-			possibleMoves.some(p => p[0] === row && p[1] === col && p[2] === true)) {
-			let direction = board[selected[0]][selected[1]] === white.pawn ? -1 : 1;
-			setBoard(removePiece(movePiece(board, selected, [row, col]), [row - direction, col]));
-		}
-
-		// normal move or capture
-		else setBoard(movePiece(board, selected, [row, col]));
-
-		setIsWhiteTurn(!isWhiteTurn);
-		setHistory([...history, { piece: board[selected[0]][selected[1]], from: selected, to: [row, col] }]);
 		setSelected(null);
 		setPossibleMoves([]);
 	}
@@ -348,9 +379,9 @@ function Board() {
 
 		let newBoard = movePiece(board, selected, promotionSquare.at);
 		newBoard[promotionSquare.at[0]][promotionSquare.at[1]] = newPiece;
-		setBoard(newBoard);
-		setIsWhiteTurn(!isWhiteTurn);
-		setHistory([...history, { piece: promotionSquare.piece, from: [promotionSquare.at[0] + (newPiece === white.pawn ? 1 : -1), promotionSquare.at[1]], to: promotionSquare.at }]);
+		// setBoard(newBoard);
+		// setIsWhiteTurn(!isWhiteTurn);
+		// setHistory([...history, { piece: promotionSquare.piece, from: [promotionSquare.at[0] + (newPiece === white.pawn ? 1 : -1), promotionSquare.at[1]], to: promotionSquare.at }]);
 		setSelected(null);
 		setPromotionSquare(null);
 		setPossibleMoves([]);

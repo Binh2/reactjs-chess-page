@@ -2,24 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import './index.css';
+import {white, black} from './global'
+// import { BoardClass } from './BoardClass';
 
-const white = {
-	king: "\u2654",
-	queen: "\u2655",
-	rook: "\u2656",
-	bishop: "\u2657",
-	knight: "\u2658",
-	pawn: "\u2659"
-};
-const black = {
-	king: "\u265A",
-	queen: "\u265B",
-	rook: "\u265C",
-	bishop: "\u265D",
-	knight: "\u265E",
-	pawn: "\u265F"
-};
 const initialBoard = [
 	[black.rook, black.knight, black.bishop, black.queen, black.king, black.bishop, black.knight, black.rook],
 	[black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn],
@@ -31,13 +18,19 @@ const initialBoard = [
 	[white.rook, white.knight, white.bishop, white.queen, white.king, white.bishop, white.knight, white.rook],
 ]
 
-type BoardType = string[][]
+// interface BoardType extends Array<Array<string>> {;
+// 	[index: Array<number>]: string;
+// 	[index: string]: string;
+// 	// [index: number]: string;
+// }
+// type BoardType = BoardClass
+type BoardType = string[][];
 type PossibleMovesType = ([number, number] | [number, number, boolean])[];
 type HasMovedType = { wK: boolean, wR1: boolean, wR2: boolean, bK: boolean, bR1: boolean, bR2: boolean };
 
-function Square({ className='', style={}, piece, row, col, onClick=() => {} }: 
-	{ className?: string, style?: React.CSSProperties, piece: string, row: number, col: number, onClick?: (row: number, col: number) => void }) {
-	return (<div className={`square ${className}`} style={style} onMouseDown={() => onClick(row, col)}>
+function Square({ id='', key=0, className='', style={}, piece, row, col, onClick=() => {} }: 
+	{ id?: string, key?: number, className?: string, style?: React.CSSProperties, piece: string, row: number, col: number, onClick?: (row: number, col: number) => void }) {
+	return (<div id={id} key={key} className={`square ${className}`} style={style} onMouseDown={() => onClick(row, col)}>
 		<pre>
 			{piece !== '.' ? piece : " "}
 		</pre>
@@ -227,7 +220,7 @@ function getPossibleMoves(board: BoardType, prevMove: PrevMoveType, isWhiteTurn:
 
 // type HistoryType = { fromPiece: string, toPiece: string, from: [number, number], to: [number, number] }[];
 type HistoryType = string[][][];
-function useBoard() {
+export function useBoard() {
 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
 	const [ history, setHistory ] = useState<HistoryType>([initialBoard]);
 	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
@@ -236,6 +229,12 @@ function useBoard() {
 
 	function isWhiteTurn() {
 		return historyIndex % 2 === 0;
+	}
+
+	function updateBoard(newBoard: BoardType) {
+		setBoard(newBoard);
+		setHistory([...history, newBoard]);
+		setHistoryIndex(historyIndex + 1);
 	}
 
 	function handleMove(from: [number, number], to: [number, number]) {
@@ -285,7 +284,7 @@ function useBoard() {
 	}
 
 	return { 
-		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove,
+		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove, updateBoard,
 		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, prevMove, isWhiteTurn(), hasMoved, from)
 	};
 }
@@ -296,7 +295,7 @@ function Board() {
 	const [ selected, setSelected ] = useState<SelectedPieceType>(null);
 	const [ possibleMoves, setPossibleMoves ] = useState<PossibleMovesType>([]);
 	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
-	const { board, prevMove, isWhiteTurn, hasMoved, handleMove, getPossibleMoves } = useBoard();
+	const { board, prevMove, isWhiteTurn, hasMoved, handleMove, getPossibleMoves, updateBoard } = useBoard();
 
 	function handleSelect(row: number, col: number) {
 		// click on empty square without having selected a piece -> do nothing
@@ -351,23 +350,14 @@ function Board() {
 			return;
 		}
 
-		handleMove(selected, [row, col]);
-
-
 		// Pawn: Promotion
 		if (board[selected[0]][selected[1]] === white.pawn && row === 0) {
-			// let newBoard = movePiece(board, selected, [row, col]);
-			// newBoard[row][col] = white.queen; // auto-promote to queen
-			// setBoard(newBoard);
 			setPromotionSquare({piece: white.pawn, at: [row, col]});
 			return;
 		} else if (board[selected[0]][selected[1]] === black.pawn && row === 7) {
-			// let newBoard = movePiece(board, selected, [row, col]);
-			// newBoard[row][col] = black.queen; // auto-promote to queen
-			// setBoard(newBoard);
 			setPromotionSquare({piece: black.pawn, at: [row, col]});
 			return;
-		}
+		} else handleMove(selected, [row, col]);
 		
 		setSelected(null);
 		setPossibleMoves([]);
@@ -379,6 +369,7 @@ function Board() {
 
 		let newBoard = movePiece(board, selected, promotionSquare.at);
 		newBoard[promotionSquare.at[0]][promotionSquare.at[1]] = newPiece;
+		updateBoard(newBoard);
 		// setBoard(newBoard);
 		// setIsWhiteTurn(!isWhiteTurn);
 		// setHistory([...history, { piece: promotionSquare.piece, from: [promotionSquare.at[0] + (newPiece === white.pawn ? 1 : -1), promotionSquare.at[1]], to: promotionSquare.at }]);
@@ -391,7 +382,7 @@ function Board() {
 		<div className="board">
 			<> { board.map((r, i) =>
 				<> { r.map((piece, j) =>
-					<Square key={j} 
+					<Square key={i*8 + j} id={`square-${i}-${j}`}
 					className={
 						((i + j) % 2 === 0 ? "--light " : "--dark ") +
 						(selected && i === selected[0] && j === selected[1] ? "--selected ": "") +
@@ -423,12 +414,13 @@ function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number,
 	</div>;
 }
 
-function Game() {
+export default function Game() {
 	return <Board />;
 }
 
-// ========================================
-ReactDOM.render(
-  <Game />,
-  document.getElementById('root')
-);
+if (import.meta.env.NODE_ENV !== 'test') {
+	const container = document.getElementById('root');
+	if (!container) throw new Error("Failed to find the root element");
+	const root = createRoot(container);
+	root.render(<Game />);
+}

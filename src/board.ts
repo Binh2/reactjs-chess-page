@@ -25,15 +25,14 @@ export function removePiece(board: BoardType, at: [number, number]) { // for en 
 export function pawnForwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number]) {
     let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
-    
-    let direction = piece === white.pawn ? -1 : 1;
+    let direction = piece === white.pawn ? 1 : -1;
 
     // Pawn: Move 1 square forward
     if (board[fromRow + direction][fromCol] === '.') {
         moves.push([fromRow + direction, fromCol]);
 
         // Pawn: Move 2 squares forward from starting position
-        if ((piece === white.pawn && fromRow === 6) || (piece === black.pawn && fromRow === 1)) {
+        if ((piece === white.pawn && fromRow === 1) || (piece === black.pawn && fromRow === 6)) {
             if (board[fromRow + 2 * direction][fromCol] === '.') {
                 moves.push([fromRow + 2 * direction, fromCol]);
             }
@@ -66,7 +65,7 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
 export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number], allowMoveOnSelf=false): PossibleMovesType {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
-    let direction = piece === white.pawn ? -1 : 1;
+    let direction = piece === white.pawn ? 1 : -1;
 
     // Pawn: Move 2 squares backward
     if (board[fromRow - 2 * direction][fromCol] === '.' || (allowMoveOnSelf && board[fromRow - 2 * direction][fromCol] === piece)) {
@@ -206,26 +205,26 @@ export function kingCastlingMoves(board: BoardType, piece: string, from: [number
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
     
-    if (piece === white.king && board[7][4] === white.king && // White king: Queenside castling
+    if (piece === white.king && board[0][4] === white.king && // White king: Queenside castling
         !hasMoved['wK'] &&
-        !hasMoved['wR1'] && board[7][0] === white.rook &&
-        board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.') {
-        moves.push([7, 2, true]); // true indicates castling
-    } else if (piece === white.king && board[7][4] === white.king && // White king: Kingside castling
-        !hasMoved['wK'] &&
-        !hasMoved['wR2'] && board[7][7] === white.rook &&
-        board[7][5] === '.' && board[7][6] === '.') {
-        moves.push([7, 6, true]); // true indicates castling
-    } else if (piece === black.king && board[0][4] === black.king && // Black king: Queenside castling
-        !hasMoved['bK'] &&
-        !hasMoved['bR1'] && board[0][0] === black.rook &&
+        !hasMoved['wR1'] && board[0][0] === white.rook &&
         board[0][1] === '.' && board[0][2] === '.' && board[0][3] === '.') {
         moves.push([0, 2, true]); // true indicates castling
-    } else if (piece === black.king && board[0][4] === black.king && // Black king: Kingside castling
-        !hasMoved['bK'] &&
-        !hasMoved['bR2'] && board[0][7] === black.rook &&
+    } else if (piece === white.king && board[0][4] === white.king && // White king: Kingside castling
+        !hasMoved['wK'] &&
+        !hasMoved['wR2'] && board[0][7] === white.rook &&
         board[0][5] === '.' && board[0][6] === '.') {
         moves.push([0, 6, true]); // true indicates castling
+    } else if (piece === black.king && board[7][4] === black.king && // Black king: Queenside castling
+        !hasMoved['bK'] &&
+        !hasMoved['bR1'] && board[7][0] === black.rook &&
+        board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.') {
+        moves.push([7, 2, true]); // true indicates castling
+    } else if (piece === black.king && board[7][4] === black.king && // Black king: Kingside castling
+        !hasMoved['bK'] &&
+        !hasMoved['bR2'] && board[7][7] === black.rook &&
+        board[7][5] === '.' && board[7][6] === '.') {
+        moves.push([7, 6, true]); // true indicates castling
     }
     return moves;
 }
@@ -263,16 +262,16 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 	return []; 
 }
 
-
+// Board is flip horizontally
 const initialBoard = [
-	[black.rook, black.knight, black.bishop, black.queen, black.king, black.bishop, black.knight, black.rook],
-	[black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
+    [white.rook, white.knight, white.bishop, white.queen, white.king, white.bishop, white.knight, white.rook],
 	[white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn],
-	[white.rook, white.knight, white.bishop, white.queen, white.king, white.bishop, white.knight, white.rook],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	[black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn],
+	[black.rook, black.knight, black.bishop, black.queen, black.king, black.bishop, black.knight, black.rook],
 ]
 
 
@@ -350,17 +349,17 @@ export function useBoard() {
 		let newBoard = board;
 		// First white Rook or King moved
 		if (board[from[0]][from[1]] === white.rook) {
-			if (from[0] === 7 && from[1] === 0) setHasMoved({...hasMoved, wR1: true});
-			else if (from[0] === 7 && from[1] === 7) setHasMoved({...hasMoved, wR2: true});
+			if (from[0] === 0 && from[1] === 0) setHasMoved({...hasMoved, wR1: true});
+			else if (from[0] === 0 && from[1] === 7) setHasMoved({...hasMoved, wR2: true});
 		} else if (board[from[0]][from[1]] === white.king) {
-			if (from[0] === 7 && from[1] === 4) setHasMoved({...hasMoved, wK: true});
+			if (from[0] === 0 && from[1] === 4) setHasMoved({...hasMoved, wK: true});
 		}
 		// First black Rook or King moved
 		else if (board[from[0]][from[1]] === black.rook) {
-			if (from[0] === 0 && from[1] === 0) setHasMoved({...hasMoved, bR1: true});
-			else if (from[0] === 0 && from[1] === 7) setHasMoved({...hasMoved, bR2: true});
+			if (from[0] === 7 && from[1] === 0) setHasMoved({...hasMoved, bR1: true});
+			else if (from[0] === 7 && from[1] === 7) setHasMoved({...hasMoved, bR2: true});
 		} else if (board[from[0]][from[1]] === black.king) {
-			if (from[0] === 0 && from[1] === 4) setHasMoved({...hasMoved, bK: true});
+			if (from[0] === 7 && from[1] === 4) setHasMoved({...hasMoved, bK: true});
 		}
 
 		// King: Castling
@@ -380,7 +379,7 @@ export function useBoard() {
 		else if ((board[from[0]][from[1]] === white.pawn || 
 			board[from[0]][from[1]] === black.pawn) && 
 			getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from).some(p => p[0] === to[0] && p[1] === to[1] && p[2] === true)) {
-			let direction = board[from[0]][from[1]] === white.pawn ? -1 : 1;
+			let direction = board[from[0]][from[1]] === white.pawn ? 1 : -1;
 			setBoard(removePiece(movePiece(board, from, to), [to[0] - direction, to[1]]));
 		}
 
@@ -399,13 +398,13 @@ export function useBoard() {
 }
 
 function rowChar(row: number) {
-    return String.fromCharCode(56 - row); // 49 is '1'; 7 -> '1', ..., 0 -> '8'
+    return String.fromCharCode(49 + row); // 49 is '1'; 0 -> '1', ..., 7 -> '8'
 }
 function colChar(col: number) {
     return String.fromCharCode(97 + col); // 97 is 'a'; 0 -> 'a', 1 -> 'b', ..., 7 -> 'h'
 }
 function rowNum(row: string) {
-    return 7 - (parseInt(row) - 1); // '1' -> 7, ..., '8' -> 0
+    return parseInt(row) - 1; // '1' -> 0, ..., '8' -> 7
 }
 function colNum(col: string) {
     return col.charCodeAt(0) - 97; // 'a' -> 0, ..., 'h' -> 7

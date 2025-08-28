@@ -24,12 +24,12 @@
 
 .board {
   display: grid;
-  grid-template-rows: 0.5fr repeat(8, 1fr);
-  grid-template-columns: 0.5fr repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   grid-gap: 0;
   gap: 0;
-  width: calc(var(--board-width) + var(--board-rank-width));
-  height: calc(var(--board-width) + var(--board-rank-width));
+  width: calc(var(--board-width));
+  height: calc(var(--board-width));
   border: 1px solid black;
 }
 
@@ -42,7 +42,7 @@
   background: var(--light-square-color);
 }
 
-.board-rank {
+.labeled-board-rank {
   display: grid;
   grid-template-rows: repeat(8, 1fr);
   width: var(--board-rank-width);
@@ -51,7 +51,7 @@
   border: 1px solid transparent;
   grid-row: 1 / -1;
 }
-.board-rank__label {
+.labeled-board-rank__label {
   display: flex;
   align-items: center;
   justify-content: right;
@@ -59,7 +59,7 @@
   /* border: 1px solid black; */
 }
 
-.board-file {
+.labeled-board-file {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   width: calc(var(--board-width) - var(--board-rank-width));
@@ -67,7 +67,7 @@
   grid-column: 2 / -1;
   /* border: 1px solid transparent; */
 }
-.board-file__label {
+.labeled-board-file__label {
   display: flex;
   /* align-items: center; */
   justify-content: center;

@@ -102,10 +102,10 @@ function Board() {
 		}
 
 		// Pawn: Promotion
-		if (board[selected[0]][selected[1]] === white.pawn && row === 0) {
+		if (board[selected[0]][selected[1]] === white.pawn && row === 7) {
 			setPromotionSquare({piece: white.pawn, at: [row, col]});
 			return;
-		} else if (board[selected[0]][selected[1]] === black.pawn && row === 7) {
+		} else if (board[selected[0]][selected[1]] === black.pawn && row === 0) {
 			setPromotionSquare({piece: black.pawn, at: [row, col]});
 			return;
 		} else handleMove(selected, [row, col]);
@@ -128,27 +128,17 @@ function Board() {
 
 	return <div>
 		<div className="board">
-			<div className='board-rank'>
-				{'87654321'.split('').map((n, i) => 
-					<div key={i} className="board-rank__label">{n}</div>
-				)}
-			</div>
-			<> { board.map((r, i) =>
+			<> { board.slice(0).reverse().map((r, i) =>
 				<> { r.map((piece, j) =>
-					<Square key={i*8 + j} id={`square-${i}-${j}`}
+					<Square key={i*8 + j} id={`square-${7-i}-${j}`}
 					className={
 						((i + j) % 2 === 0 ? "--light " : "--dark ") +
-						(selected && i === selected[0] && j === selected[1] ? "--selected ": "") +
-						(possibleMoves.some(p => p[0] === i && p[1] === j) ? "--possible ": "")
+						(selected && 7-i === selected[0] && j === selected[1] ? "--selected ": "") +
+						(possibleMoves.some(p => p[0] === 7-i && p[1] === j) ? "--possible ": "")
 					} 
-					piece={piece} row={i} col={j} onClick={handleSelect} />
+					piece={piece} row={7-i} col={j} onClick={handleSelect} />
 				) } </>
 			) } </>
-			<div className='board-file'>
-				{'abcdefgh'.split('').map((n, i) => 
-					<div key={i} className="board-file__label">{n}</div>
-				)}
-			</div>
 		</div>
 		{ promotionSquare && <PromotionMenu piece={promotionSquare.piece} at={promotionSquare.at} onMouseDown={handlePromotion} /> }
 		<div>
@@ -165,6 +155,24 @@ function Board() {
 			}} autoFocus ref={inputRef} />
 		</div>
 	</div>;
+}
+
+function LabeledBoard() {
+	return (
+		<div className="labeled-board">
+			<div className="labeled-board-rank">
+				{'87654321'.split('').map((n, i) =>
+					<div key={i} className="labeled-board-rank__label">{n}</div>
+				)}
+			</div>
+			<Board></Board>
+			<div className='labeled-board-file'>
+				{'abcdefgh'.split('').map((n, i) =>
+					<div key={i} className="labeled-board-file__label">{n}</div>
+				)}
+			</div>
+		</div>
+	);
 }
 function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number, number], onMouseDown: (newPiece: string) => void }) {
 	const direction = piece === white.pawn ? -1 : 1;
@@ -186,7 +194,7 @@ function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number,
 }
 
 export default function Game() {
-	return <Board />;
+	return <LabeledBoard />;
 }
 
 if (import.meta.env.NODE_ENV !== 'test') {

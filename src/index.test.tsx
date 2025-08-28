@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen, act, renderHook } from '@testing-library/react';
-import Game, { useBoard } from './index'; 
+import Game from './index'; 
+import { useBoard } from './board';
 import { white, black } from './global'
 
 describe('App', () => {
@@ -12,7 +13,7 @@ describe('App', () => {
     });
     it('all pawn moves: initial position, 2 square, en passant', () => {
         const { result: { current: { board } } } = renderHook(() => useBoard());
-        
+
         // const { result: { current: { board } } } = renderHook(() => useBoard());
     });
 });

@@ -127,19 +127,21 @@ function Board() {
 	}
 
 	return <div>
-		<div className="board">
-			<> { board.slice(0).reverse().map((r, i) =>
-				<> { r.map((piece, j) =>
-					<Square key={i*8 + j} id={`square-${7-i}-${j}`}
-					className={
-						((i + j) % 2 === 0 ? "--light " : "--dark ") +
-						(selected && 7-i === selected[0] && j === selected[1] ? "--selected ": "") +
-						(possibleMoves.some(p => p[0] === 7-i && p[1] === j) ? "--possible ": "")
-					} 
-					piece={piece} row={7-i} col={j} onClick={handleSelect} />
+		<LabeledBoard>
+			<div className="board">
+				<> { board.slice(0).reverse().map((r, i) =>
+					<> { r.map((piece, j) =>
+						<Square key={i*8 + j} id={`square-${7-i}-${j}`}
+						className={
+							((i + j) % 2 === 0 ? "--light " : "--dark ") +
+							(selected && 7-i === selected[0] && j === selected[1] ? "--selected ": "") +
+							(possibleMoves.some(p => p[0] === 7-i && p[1] === j) ? "--possible ": "")
+						} 
+						piece={piece} row={7-i} col={j} onClick={handleSelect} />
+					) } </>
 				) } </>
-			) } </>
-		</div>
+			</div>
+		</LabeledBoard>
 		{ promotionSquare && <PromotionMenu piece={promotionSquare.piece} at={promotionSquare.at} onMouseDown={handlePromotion} /> }
 		<div>
 			<span>Move: </span>
@@ -157,7 +159,7 @@ function Board() {
 	</div>;
 }
 
-function LabeledBoard() {
+function LabeledBoard({children: boardChildren}: {children: React.ReactNode}) {
 	return (
 		<div className="labeled-board">
 			<div className="labeled-board-rank">
@@ -165,9 +167,9 @@ function LabeledBoard() {
 					<div key={i} className="labeled-board-rank__label">{n}</div>
 				)}
 			</div>
-			<Board></Board>
+			{ boardChildren }
 			<div className='labeled-board-file'>
-				{'abcdefgh'.split('').map((n, i) =>
+				{'abcdefgh'.split('').reverse().map((n, i) => // Because in the CSS file, the file labels are reversed
 					<div key={i} className="labeled-board-file__label">{n}</div>
 				)}
 			</div>
@@ -194,7 +196,7 @@ function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number,
 }
 
 export default function Game() {
-	return <LabeledBoard />;
+	return <Board />;
 }
 
 if (import.meta.env.NODE_ENV !== 'test') {

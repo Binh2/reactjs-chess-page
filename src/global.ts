@@ -18,14 +18,6 @@
 export const DEBUG = true;
 
 export const white = {
-	king: 'k',
-	queen: 'q',
-	rook: 'r',
-	bishop: 'b',
-	knight: 'n',
-	pawn: 'p'
-};
-export const black = {
 	king: 'K',
 	queen: 'Q',
 	rook: 'R',
@@ -33,19 +25,27 @@ export const black = {
 	knight: 'N',
 	pawn: 'P'
 };
+export const black = {
+	king: 'k',
+	queen: 'q',
+	rook: 'r',
+	bishop: 'b',
+	knight: 'n',
+	pawn: 'p'
+};
 
 export const displayPiece: Record<string, string> = {
-	k: '\u2654',
-	q: '\u2655',
-	r: '\u2656',
-	b: '\u2657',
-	n: '\u2658',
-	p: '\u2659',
-	K: '\u265A',
-	Q: '\u265B',
-	R: '\u265C',
-	B: '\u265D',
-	N: '\u265E',
-	P: '\u265F',
+	K: '\u2654',
+	Q: '\u2655',
+	R: '\u2656',
+	B: '\u2657',
+	N: '\u2658',
+	P: '\u2659',
+	k: '\u265A',
+	q: '\u265B',
+	r: '\u265C',
+	b: '\u265D',
+	n: '\u265E',
+	p: '\u265F',
 	'.': '.'
 }

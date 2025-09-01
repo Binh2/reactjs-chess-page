@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { displayPiece, white, black} from './global'
-import { printBoard, movePiece, removePiece, getPossibleMoves, BoardType, PossibleMovesType, useBoard } from './board';
+import { movePiece, removePiece, getPossibleMoves, BoardType, PossibleMovesType, useBoard, getFenNotation, readFenNotation } from './board';
 
 // interface BoardType extends Array<Array<string>> {;
 // 	[index: Array<number>]: string;
@@ -25,14 +25,18 @@ function Square({ id='', key=0, className='', style={}, piece, row, col, onClick
 	</div>);
 }
 
+const initialPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+// const initialPosition = 'r4rk1/1b1p1pb1/pp4pp/2q4n/P1BpP3/3P3P/1PP1N1PB/R1Q2R1K w kq - 0 1'
 const moves = [
-	"e4", 
-	"c5", 
-	"Nf3", 
-	"Nc6", "Bc4", "g6", "Ng5", "e6", 
-	"O-O", 
-	"Bg7", "d3", "a6", "a4", "Nf6", "Nf3", "h6", "Be3", "b6", "Qc1", "Ng4", "Bd2", "Qc7", "h3", "Nf6", "Nc3", "Nd4", "Nxd4", "cxd4", "Ne2", "e5", "f4", "Bb7", "fxe5", "Qxe5", "Bf4", "Qc5", "Kh1", "Nh5", "Bh2", "O-O"
-	, "Bb3", "Rae8", "Bg1", "d5", "g4", "dxe4", "Kh2", "Qe5+", "Nf4", "Nxf4", "Qxf4", "exd3", "Bxd4", "Qxf4+", "Rxf4", "Re2+", "Kg1", "Bxd4+", "Rxd4", "dxc2", "Rc1", "Rfe8", "Bxc2", "Rg2+", "Kf1", "Ree2", "Bd3", "Rd2", "Rd7", "Rh2", "Ke1", "Rxb2", "Rxb7", "Rh1+", "Bf1", "b5", "Rb6", "b4", "Rxa6", "b3", "Rb6", "Ra2", "Rxb3", "Rxa4", "Kf2", "Rh2+", "Kg3", "Rd2", "Rf3", "Ra7", "Bc4", "Rd4", "Bb3", "Rb4", "Rcf1", "Rbb7", "Rf6", "Kg7", "Bd5", "Rc7", "Kh4", "Re7", "R6f4", "g5+", "Kh5", "gxf4", "Rxf4", "Ra5", "Rf5", "f6", "Bc4", "Rxf5+", "gxf5", "Re5", "Be6", "Re3", "Kg4", "Re1", "Bd7", "Rg1+", "Kf4", "h5", "Be8", "h4", "Bh5", "Kh6", "Bg4", "Rg3", "Ke4", "Kg5", "Kd5", "Rxg4", "hxg4", "Kxg4", "Ke6", "h3", "Kxf6", "h2", "Kg6", "h1=Q", "f6", "Qe4+", "Kg7", "Qb7+", "f7", "Kf5", "Kg8", "Qg2+", "Kf8", "Kg6", "Ke8", "Qe4+", "Kf8", "Qa8+", "Ke7", "Qb7+", "Kf8", "Qc8+", "Ke7", "Qc5+", "Ke8", "Qc6+", "Kf8", "Kh7", "Ke7", "Qc7+", "Ke8", "Qc8+", "Ke7", "Qb7+",
+	// "e4", 
+	// "c5", 
+	// "Nf3", 
+	// "Nc6", "Bc4", "g6", "Ng5", "e6", 
+	// "O-O", 
+	// "Bg7", "d3", "a6", "a4", "Nf6", "Nf3", "h6", "Be3", "b6", "Qc1", "Ng4", "Bd2", "Qc7", "h3", "Nf6", "Nc3", "Nd4", "Nxd4", "cxd4", "Ne2", "e5", "f4", "Bb7", "fxe5", "Qxe5", "Bf4", "Qc5", "Kh1", "Nh5", "Bh2", "O-O", 
+	// "Bb3", 
+	// "Rae8", 
+	// "Bg1", "d5", "g4", "dxe4", "Kh2", "Qe5+", "Nf4", "Nxf4", "Qxf4", "exd3", "Bxd4", "Qxf4+", "Rxf4", "Re2+", "Kg1", "Bxd4+", "Rxd4", "dxc2", "Rc1", "Rfe8", "Bxc2", "Rg2+", "Kf1", "Ree2", "Bd3", "Rd2", "Rd7", "Rh2", "Ke1", "Rxb2", "Rxb7", "Rh1+", "Bf1", "b5", "Rb6", "b4", "Rxa6", "b3", "Rb6", "Ra2", "Rxb3", "Rxa4", "Kf2", "Rh2+", "Kg3", "Rd2", "Rf3", "Ra7", "Bc4", "Rd4", "Bb3", "Rb4", "Rcf1", "Rbb7", "Rf6", "Kg7", "Bd5", "Rc7", "Kh4", "Re7", "R6f4", "g5+", "Kh5", "gxf4", "Rxf4", "Ra5", "Rf5", "f6", "Bc4", "Rxf5+", "gxf5", "Re5", "Be6", "Re3", "Kg4", "Re1", "Bd7", "Rg1+", "Kf4", "h5", "Be8", "h4", "Bh5", "Kh6", "Bg4", "Rg3", "Ke4", "Kg5", "Kd5", "Rxg4", "hxg4", "Kxg4", "Ke6", "h3", "Kxf6", "h2", "Kg6", "h1=Q", "f6", "Qe4+", "Kg7", "Qb7+", "f7", "Kf5", "Kg8", "Qg2+", "Kf8", "Kg6", "Ke8", "Qe4+", "Kf8", "Qa8+", "Ke7", "Qb7+", "Kf8", "Qc8+", "Ke7", "Qc5+", "Ke8", "Qc6+", "Kf8", "Kh7", "Ke7", "Qc7+", "Ke8", "Qc8+", "Ke7", "Qb7+",
 ] as string[];
 type SelectedPieceType = [number, number] | null;
 function Board() {
@@ -41,11 +45,14 @@ function Board() {
 	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
 	const [ moveInput, setMoveInput ] = useState('');
 	const inputRef = React.useRef<HTMLInputElement>(null);
-	const { board, prevMove, isWhiteTurn, hasMoved, move, useAutoMove, handleMove, getPossibleMoves, updateBoard } = useBoard();
+	const { board: initialBoard } = readFenNotation(initialPosition);
+	const { board, prevMove, isWhiteTurn, hasMoved, move, useAutoMove, handleMove, getPossibleMoves, updateBoard } = useBoard({ initialBoard });
+	// const { board, prevMove, isWhiteTurn, hasMoved, move, useAutoMove, handleMove, getPossibleMoves, updateBoard } = useBoard({ });
 	console.log(selected, possibleMoves, isWhiteTurn)
 
 	useAutoMove(moves, 100);
-	printBoard(board);
+	// printBoard(board);
+	console.log(getFenNotation(board, isWhiteTurn, hasMoved))
 
 	function handleKeyDown(event: React.KeyboardEvent) {
 		if (inputRef.current) {

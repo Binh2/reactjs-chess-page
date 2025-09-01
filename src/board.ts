@@ -1,8 +1,14 @@
-import { white, black } from './global'
-import React, { useState } from 'react';
+import { white, black, DEBUG } from './global'
+import React, { useState, useEffect } from 'react';
 
 export type BoardType = string[][];
-export type PossibleMovesType = ([number, number] | [number, number, boolean])[];
+export type PossibleMovesType = ({
+    from: [number, number],
+    to: [number, number],
+    // isCapture?: boolean,
+    isCastling?: boolean,
+    isEnPassant?: boolean
+})[];
 type HasMovedType = { wK: boolean, wR1: boolean, wR2: boolean, bK: boolean, bR1: boolean, bR2: boolean };
 
 export function movePiece(board: BoardType, from: [number, number], to: [number, number]) {
@@ -29,12 +35,12 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
 
     // Pawn: Move 1 square forward
     if (board[fromRow + direction][fromCol] === '.') {
-        moves.push([fromRow + direction, fromCol]);
+        moves.push({ from, to: [fromRow + direction, fromCol] });
 
         // Pawn: Move 2 squares forward from starting position
         if ((piece === white.pawn && fromRow === 1) || (piece === black.pawn && fromRow === 6)) {
             if (board[fromRow + 2 * direction][fromCol] === '.') {
-                moves.push([fromRow + 2 * direction, fromCol]);
+                moves.push({ from, to: [fromRow + 2 * direction, fromCol] });
             }
         }
     }
@@ -43,12 +49,12 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
     if (fromCol > 0 && board[fromRow + direction][fromCol - 1] !== '.' &&
         ((piece === white.pawn && Object.values(black).includes(board[fromRow + direction][fromCol - 1])) ||
         (piece === black.pawn && Object.values(white).includes(board[fromRow + direction][fromCol - 1])))) {
-        moves.push([fromRow + direction, fromCol - 1]);
+        moves.push({ from, to: [fromRow + direction, fromCol - 1] });
     }
     if (fromCol < 7 && board[fromRow + direction][fromCol + 1] !== '.' &&
         ((piece === white.pawn && Object.values(black).includes(board[fromRow + direction][fromCol + 1])) ||
         (piece === black.pawn && Object.values(white).includes(board[fromRow + direction][fromCol + 1])))) {
-        moves.push([fromRow + direction, fromCol + 1]);
+        moves.push({ from, to: [fromRow + direction, fromCol + 1] });
     }
 
     // Pawn: En passant captures
@@ -58,38 +64,47 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
         Math.abs(prevMove.from[0] - prevMove.to[0]) === 2 && // last move was a 2-square pawn move
         prevMove.to[0] === fromRow && // last move ended on the same row as the pawn
         Math.abs(prevMove.to[1] - fromCol) === 1) { // last move ended next to the pawn
-        moves.push([fromRow + direction, prevMove.to[1], true]); // true indicates en passant
+        moves.push({ from, to: [fromRow + direction, prevMove.to[1]], isEnPassant: true }); // true indicates en passant
     }
     return moves;
 }
-export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number], allowMoveOnSelf=false): PossibleMovesType {
-    let [fromRow, fromCol] = from;
+export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, to: [number, number], allowMoveOnSelf=false): PossibleMovesType {
+    let [toRow, toCol] = to;
     let moves: PossibleMovesType = [];
     let direction = piece === white.pawn ? 1 : -1;
+    console.log("piece: ", piece, piece === white.pawn)
+    console.log("direction: ", direction)
+    let allowedToSquares = allowMoveOnSelf ? [ '.', piece ] : [ '.' ];
 
+    // if (DEBUG) console.log("Pawn backward moves: ", moves);
     // Pawn: Move 2 squares backward
-    if (board[fromRow - 2 * direction][fromCol] === '.' || (allowMoveOnSelf && board[fromRow - 2 * direction][fromCol] === piece)) {
-        moves.push([fromRow - 2 * direction, fromCol]);
+    if (allowedToSquares.includes(board[toRow - 2 * direction][toCol]) && 
+    board[toRow][toCol] === '.' ||
+    ((isWhiteTurn && toRow - 2 * direction === 1) || 
+    (!isWhiteTurn && toRow - 2 * direction === 6))) {
+        moves.push({ from: [toRow - 2 * direction, toCol], to });
     }
     // Pawn: Move 1 square backward
-    if (board[fromRow - direction][fromCol] === '.' || (allowMoveOnSelf && board[fromRow - direction][fromCol] === piece)) {
-        moves.push([fromRow - direction, fromCol]);
+    if (allowedToSquares.includes(board[toRow - direction][toCol]) &&
+    board[toRow][toCol] === '.') {
+        moves.push({ from: [toRow - direction, toCol], to });
     }
-    // Pawn: Capture diagonally backward left
-    if (fromCol > 0 && board[fromRow - direction][fromCol - 1] !== '.' &&
-        ((piece === white.pawn && Object.values(black).includes(board[fromRow - direction][fromCol - 1])) ||
-        (piece === black.pawn && Object.values(white).includes(board[fromRow - direction][fromCol - 1])))) {
-        moves.push([fromRow - direction, fromCol - 1]);
+    // Pawn: Capture diagonally backward from left
+    if (toCol > 0 && board[toRow - direction][toCol - 1] === piece &&
+        ((piece === white.pawn && board[toRow - direction][toCol - 1] === white.pawn && 'RNBQP'.split('').includes(board[toRow][toCol])) ||
+        (piece === black.pawn && board[toRow - direction][toCol - 1] === black.pawn && 'rnbqp'.split('').includes(board[toRow][toCol])))) {
+        moves.push({ from: [toRow - direction, toCol - 1], to });
     }
-    // Pawn: Capture diagonally backward right
-    if (fromCol < 7 && board[fromRow - direction][fromCol + 1] !== '.' &&
-        ((piece === white.pawn && Object.values(black).includes(board[fromRow - direction][fromCol + 1])) ||
-        (piece === black.pawn && Object.values(white).includes(board[fromRow - direction][fromCol + 1])))) {
-        moves.push([fromRow - direction, fromCol + 1]);
+    // Pawn: Capture diagonally backward from right
+    if (toCol < 7 && board[toRow - direction][toCol + 1] === piece &&
+        ((piece === white.pawn && board[toRow - direction][toCol + 1] === white.pawn && 'RNBQP'.split('').includes(board[toRow][toCol])) ||
+        (piece === black.pawn && board[toRow - direction][toCol + 1] === black.pawn && 'rnbqp'.split('').includes(board[toRow][toCol])))) {
+        moves.push({ from: [toRow - direction, toCol + 1], to });
     }
 
     return moves;
 }
+export function rookBackwardMoves(board: BoardType, piece: string, to: [number, number]) { return rookMoves(board, piece, to, true); }
 export function rookMoves(board: BoardType, piece: string, from: [number, number], allowMoveOnSelf=false) {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
@@ -100,11 +115,13 @@ export function rookMoves(board: BoardType, piece: string, from: [number, number
         let c = fromCol + dc;
         while (r >= 0 && r < 8 && c >= 0 && c < 8) {
             if (board[r][c] === '.' || (allowMoveOnSelf && board[r][c] === piece)) { // Rook: Move to empty square
-                moves.push([r, c]);
+                if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                else moves.push({ from, to: [r, c] });
             } else { // Rook: Capture
                 if ((Object.values(white).includes(piece) && Object.values(black).includes(board[r][c])) ||
                     (Object.values(black).includes(piece) && Object.values(white).includes(board[r][c]))) {
-                    moves.push([r, c]);
+                    if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                    else moves.push({ from, to: [r, c] });
                 }
                 break;
             }
@@ -114,6 +131,7 @@ export function rookMoves(board: BoardType, piece: string, from: [number, number
     }
     return moves;
 }
+export function knightBackwardMoves(board: BoardType, piece: string, to: [number, number]) { return knightMoves(board, piece, to, true); }
 export function knightMoves(board: BoardType, piece: string, from: [number, number], allowMoveOnSelf=false) {
     let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
@@ -126,12 +144,14 @@ export function knightMoves(board: BoardType, piece: string, from: [number, numb
             if (board[r][c] === '.' || (allowMoveOnSelf && board[r][c] === piece) || // Knight: Move to empty square or capture
                 (Object.values(white).includes(piece) && Object.values(black).includes(board[r][c])) || // Knight: Capture
                 (Object.values(black).includes(piece) && Object.values(white).includes(board[r][c]))) {
-                moves.push([r, c]);
+                if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                else moves.push({ from, to: [r, c] });
             }
         }
     }
     return moves;
 }
+export function bishopBackwardMoves(board: BoardType, piece: string, to: [number, number]) { return bishopMoves(board, piece, to, true); }
 export function bishopMoves(board: BoardType, piece: string, from: [number, number], allowMoveOnSelf=false) {
     console.log(from)
     let [fromRow, fromCol] = from;
@@ -143,11 +163,13 @@ export function bishopMoves(board: BoardType, piece: string, from: [number, numb
         let c = fromCol + dc;
         while (r >= 0 && r < 8 && c >= 0 && c < 8) {
             if (board[r][c] === '.' || (allowMoveOnSelf && board[r][c] === piece)) { // Bishop: Move to empty square
-                moves.push([r, c]);
+                if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                else moves.push({ from, to: [r, c] });
             } else { // Bishop: Capture
                 if ((Object.values(white).includes(piece) && Object.values(black).includes(board[r][c])) ||
                     (Object.values(black).includes(piece) && Object.values(white).includes(board[r][c]))) {
-                    moves.push([r, c]);
+                    if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                    else moves.push({ from, to: [r, c] });
                 }
                 break;
             }
@@ -158,6 +180,7 @@ export function bishopMoves(board: BoardType, piece: string, from: [number, numb
     console.log(moves)
     return moves;
 }
+export function queenBackwardMoves(board: BoardType, piece: string, to: [number, number]) { return queenMoves(board, piece, to, true); }
 export function queenMoves(board: BoardType, piece: string, from: [number, number], allowMoveOnSelf=false) {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
@@ -168,11 +191,13 @@ export function queenMoves(board: BoardType, piece: string, from: [number, numbe
         let c = fromCol + dc;
         while (r >= 0 && r < 8 && c >= 0 && c < 8) {
             if (board[r][c] === '.' || (allowMoveOnSelf && board[r][c] === piece)) { // Queen: Move to empty square
-                moves.push([r, c]);
+                if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                else moves.push({ from, to: [r, c] });
             } else { // Queen: Capture
                 if ((Object.values(white).includes(piece) && Object.values(black).includes(board[r][c])) ||
                     (Object.values(black).includes(piece) && Object.values(white).includes(board[r][c]))) {
-                    moves.push([r, c]);
+                    if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                    else moves.push({ from, to: [r, c] });
                 }
                 break;
             }
@@ -182,6 +207,7 @@ export function queenMoves(board: BoardType, piece: string, from: [number, numbe
     }
     return moves;
 }
+export function kingNormalBackwardMoves(board: BoardType, piece: string, to: [number, number]) { return kingNormalMoves(board, piece, to, true); }
 export function kingNormalMoves(board: BoardType, piece: string, from: [number, number], allowMoveOnSelf=false) {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
@@ -195,13 +221,15 @@ export function kingNormalMoves(board: BoardType, piece: string, from: [number, 
             if (board[r][c] === '.' || (allowMoveOnSelf && board[r][c] === piece) || // King: Move to empty square or capture
                 (Object.values(white).includes(piece) && Object.values(black).includes(board[r][c])) || // King: Capture
                 (Object.values(black).includes(piece) && Object.values(white).includes(board[r][c]))) {
-                moves.push([r, c]);
+                if (allowMoveOnSelf) moves.push({ from: [r, c], to: [fromRow, fromCol] });
+                else moves.push({ from, to: [r, c] });
             }
         }
     }
     return moves;
 }
 export function kingCastlingMoves(board: BoardType, piece: string, from: [number, number], hasMoved: HasMovedType) {
+    if (DEBUG === true) console.log("kingCastlingMoves", piece, from, hasMoved)
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
     
@@ -209,24 +237,38 @@ export function kingCastlingMoves(board: BoardType, piece: string, from: [number
         !hasMoved['wK'] &&
         !hasMoved['wR1'] && board[0][0] === white.rook &&
         board[0][1] === '.' && board[0][2] === '.' && board[0][3] === '.') {
-        moves.push([0, 2, true]); // true indicates castling
+        moves.push({ from, to: [0, 2], isCastling: true }); // true indicates castling
     } else if (piece === white.king && board[0][4] === white.king && // White king: Kingside castling
         !hasMoved['wK'] &&
         !hasMoved['wR2'] && board[0][7] === white.rook &&
         board[0][5] === '.' && board[0][6] === '.') {
-        moves.push([0, 6, true]); // true indicates castling
+        moves.push({ from, to: [0, 6], isCastling: true }); // true indicates castling
     } else if (piece === black.king && board[7][4] === black.king && // Black king: Queenside castling
         !hasMoved['bK'] &&
         !hasMoved['bR1'] && board[7][0] === black.rook &&
         board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.') {
-        moves.push([7, 2, true]); // true indicates castling
+        moves.push({ from, to: [7, 2], isCastling: true }); // true indicates castling
     } else if (piece === black.king && board[7][4] === black.king && // Black king: Kingside castling
         !hasMoved['bK'] &&
         !hasMoved['bR2'] && board[7][7] === black.rook &&
         board[7][5] === '.' && board[7][6] === '.') {
-        moves.push([7, 6, true]); // true indicates castling
+        moves.push({ from, to: [7, 6], isCastling: true }); // true indicates castling
     }
     return moves;
+}
+export function kingCastlingBackwardMoves(type: string): PossibleMovesType {
+    if (type === 'longCastle') {
+        return [
+            { from: [0, 4], to: [0, 2], isCastling: true },
+            { from: [7, 4], to: [7, 2], isCastling: true },
+        ];
+    } else if (type === 'shortCastle') {
+        return [
+            { from: [0, 4], to: [0, 6], isCastling: true },
+            { from: [7, 4], to: [7, 6], isCastling: true },
+        ];
+    }
+    return [];
 }
 export function kingMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number]) {
     let [fromRow, fromCol] = from;
@@ -264,15 +306,15 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 
 // Board is flip horizontally
 const initialBoard = [
-    [white.rook, white.knight, white.bishop, white.queen, white.king, white.bishop, white.knight, white.rook],
-	[white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
-	['.', '.', '.', '.', '.', '.', '.', '.'],
+    [black.rook, black.knight, black.bishop, black.queen, black.king, black.bishop, black.knight, black.rook],
 	[black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn, black.pawn],
-	[black.rook, black.knight, black.bishop, black.queen, black.king, black.bishop, black.knight, black.rook],
-]
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	['.', '.', '.', '.', '.', '.', '.', '.'],
+	[white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn, white.pawn],
+    [white.rook, white.knight, white.bishop, white.queen, white.king, white.bishop, white.knight, white.rook],
+].splice(0).reverse();
 
 
 type HistoryType = string[][][];
@@ -294,115 +336,190 @@ export function useBoard() {
 	}
     
 
+    function parseMove(move: string): {type: 'shortCastle' | 'longCastle' | 'normal', piece: string, from?: [number, number], to: [number, number], promotionPiece?: string} {
+        if (move === 'O-O') return { 
+            type: 'shortCastle', 
+            piece: isWhiteTurn() ? white.king : black.king,
+            from: isWhiteTurn() ? [0, 4] : [7, 4],
+            to: isWhiteTurn() ? [0, 6] : [7, 6],
+        };
+        if (move === 'O-O-O') return { 
+            type: 'longCastle', 
+            piece: isWhiteTurn() ? white.king : black.king,
+            from: isWhiteTurn() ? [0, 4] : [7, 4],
+            to: isWhiteTurn() ? [0, 2] : [7, 2],
+        };
+
+        const re = /(?<piece>[RNBQK])?(?<from>[a-h]?[1-8]?)(?<isCaptured>x?)(?<to>[a-h][1-8])(?<promotionPiece>(=[RNBQ])?)(?<isCheck>\+?)(?<isCheckMate>#?)/g;
+        const match = re.exec(move);
+        if (!match) throw new Error(`Invalid move format: ${move}`);
+        const { groups } = match;
+        if (!groups) throw new Error(`Invalid move format: ${move}`);
+        let piece = groups.piece || (isWhiteTurn() ? white.pawn : black.pawn);
+        piece = isWhiteTurn() ? piece.toLowerCase() : piece.toUpperCase();
+        if (!piece) throw new Error(`Invalid move format: ${move}`);
+        if (DEBUG) console.log(groups);
+
+        return { 
+            type: 'normal', 
+            piece: piece, 
+            // from: [rowNum(groups.from[1]), colNum(groups.from[0])], 
+            to: [rowNum(groups.to[1]), colNum(groups.to[0])] as [number, number],  
+            promotionPiece: groups.promotionPiece 
+        };
+        // return { type: 'unknown' };
+    }
+    
+
 	function move(move: string) {
-		let possibleMoves: PossibleMovesType = [];
-        let piece: string = '.';
-        let toRow = -1, toCol = -1, to: [number, number] = [-1, -1];
-        if (move.length === 2) {
-            piece = isWhiteTurn() ? white.pawn : black.pawn;
-            toRow = rowNum(move[1]);
-            toCol = colNum(move[0]);
-            to = [toRow, toCol];
-            
-            possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
+        let parsedMove = parseMove(move);
+        let { piece, from, to, promotionPiece } = parsedMove;
+        let [ toRow, toCol ] = to;
+        let possibleMoves = [] as PossibleMovesType;
+
+        if (DEBUG === true) console.log(parsedMove)
+        if (parsedMove.type === 'shortCastle') {
+            // Handle short castling
+            possibleMoves.push(...kingCastlingBackwardMoves('shortCastle'));
+            // possibleMoves.push([0,4])
         }
-        else if (move == 'O-O') return; // Short castle: i dont want implement it just yet
-        else if (move == 'O-O-O') return; // Short castle: i dont want implement it just yet
-        else if (move.length === 3) {
-            piece = move[0];
-            toCol = colNum(move[1]);
-            toRow = rowNum(move[2]);
-            to = [ toRow, toCol ];
-            
-            if (piece === white.rook || piece === black.rook) { // Rook moves
-                possibleMoves.push(...rookMoves(board, piece, to, true));
-            } else if (piece === white.knight || piece === black.knight) { // Knight moves
-                possibleMoves.push(...knightMoves(board, piece, to, true));
-            } else if (piece === white.bishop || piece === black.bishop) { // Bishop moves
-                // movePiece(board, piece, to);
-                possibleMoves.push(...bishopMoves(board, piece, to, true));
-            } else if (piece === white.queen || piece === black.queen) { // Queen moves
-                possibleMoves.push(...queenMoves(board, piece, to, true));
-            } else if (piece === white.king || piece === black.king) { // King moves
-                possibleMoves.push(...kingNormalMoves(board, piece, to, true));
+        else if (parsedMove.type === 'longCastle') {
+            // Handle long castling
+            possibleMoves.push(...kingCastlingBackwardMoves('longCastle'));
+        }
+        
+        else if (parsedMove.type !== 'normal' || !parsedMove.to) throw new Error(`Invalid move type: ${move}`);
+        
+        
+        else {
+            // Handle normal moves
+            // piece = parsedMove.piece, to = parsedMove.to, promotionPiece = parsedMove.promotionPiece;
+            // toRow = to[0], toCol = to[1];
+            // let possibleMoves: PossibleMovesType = [];
+            if (parsedMove.piece === white.pawn || parsedMove.piece === black.pawn) {
+                if (DEBUG) console.log("pawn moves")
+                possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
+            }
+            else {
+                if (piece === white.rook || piece === black.rook) { // Rook moves
+                    possibleMoves.push(...rookBackwardMoves(board, piece, to));
+                } else if (piece === white.knight || piece === black.knight) { // Knight moves
+                    possibleMoves.push(...knightBackwardMoves(board, piece, to));
+                } else if (piece === white.bishop || piece === black.bishop) { // Bishop moves
+                    // movePiece(board, piece, to);
+                    possibleMoves.push(...bishopBackwardMoves(board, piece, to));
+                } else if (piece === white.queen || piece === black.queen) { // Queen moves
+                    possibleMoves.push(...queenBackwardMoves(board, piece, to));
+                } else if (piece === white.king || piece === black.king) { // King moves
+                    possibleMoves.push(...kingNormalBackwardMoves(board, piece, to));
+                }
             }
         }
-
         console.log("possibleMoves", possibleMoves)
-        possibleMoves = possibleMoves.filter(from => {
-            console.log(board[from[0]][from[1]], piece)
-            return board[from[0]][from[1]] === piece
+        possibleMoves = possibleMoves.filter(possibleMove => {
+            console.log(board[possibleMove.from[0]][possibleMove.from[1]], piece)
+            return board[possibleMove.from[0]][possibleMove.from[1]] === piece
         });
         console.log("filtered possibleMoves", possibleMoves)
         if (possibleMoves.length === 0) throw new Error(`Invalid move (${move}): no valid moves found`);
         if (possibleMoves.length > 1) throw new Error(`Invalid move (${move}): ambiguous move, multiple same piece can move to the target square`);
-        const newBoard = movePiece(board, possibleMoves[0] as [number, number], to);
-        setBoard(newBoard);
+        from = possibleMoves[0].from;
+        if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
+        console.log(board)
+
+        handleMove(board, from, to);
+	}
+
+    function handleMove(board: string[][], from: [number, number], to: [number, number]) {
+        console.log("handleMove", from, to);
+        let newBoard = movePiece(board, from, to);
 
 		// const from = possibleMoves.filter(m => board[m[0]][m[1]] === piece)[0]; // Still need to fix
 		// if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
         // movePiece(board, from as [number, number], [toRow, toCol])
-		handleMove(possibleMoves[0] as [number, number], [toRow, toCol]);
-	}
+		newBoard = updateRookAfterCastling(newBoard, from, to);
+        newBoard = updateOtherPawnAfterEnPassant(newBoard, from, to);
 
-	function handleMove(from: [number, number], to: [number, number]) {
-		let newBoard = board;
-		// First white Rook or King moved
-		if (board[from[0]][from[1]] === white.rook) {
-			if (from[0] === 0 && from[1] === 0) setHasMoved({...hasMoved, wR1: true});
-			else if (from[0] === 0 && from[1] === 7) setHasMoved({...hasMoved, wR2: true});
-		} else if (board[from[0]][from[1]] === white.king) {
-			if (from[0] === 0 && from[1] === 4) setHasMoved({...hasMoved, wK: true});
-		}
-		// First black Rook or King moved
-		else if (board[from[0]][from[1]] === black.rook) {
-			if (from[0] === 7 && from[1] === 0) setHasMoved({...hasMoved, bR1: true});
-			else if (from[0] === 7 && from[1] === 7) setHasMoved({...hasMoved, bR2: true});
-		} else if (board[from[0]][from[1]] === black.king) {
-			if (from[0] === 7 && from[1] === 4) setHasMoved({...hasMoved, bK: true});
-		}
-
-		// King: Castling
-		if ((board[from[0]][from[1]] === white.king || board[from[0]][from[1]] === black.king) && 
-			getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from).some(p => p[0] === to[0] && p[1] === to[1] && p[2] === true)) {
-			if (to[1] === 2) { // Queenside castling
-				newBoard = movePiece(newBoard, from, to);// move the king
-				newBoard = movePiece(newBoard, [from[0], 0], [from[0], 3]); // move the rook
-			} else if (to[1] === 6) { // kingside castling
-				newBoard = movePiece(newBoard, from, to); // move the king
-				newBoard = movePiece(newBoard, [from[0], 7], [from[0], 5]); // move the rook
-			}
-			setBoard(newBoard);
-		}
-
-		// Pawn: En passant capture
-		else if ((board[from[0]][from[1]] === white.pawn || 
-			board[from[0]][from[1]] === black.pawn) && 
-			getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from).some(p => p[0] === to[0] && p[1] === to[1] && p[2] === true)) {
-			let direction = board[from[0]][from[1]] === white.pawn ? 1 : -1;
-			setBoard(removePiece(movePiece(board, from, to), [to[0] - direction, to[1]]));
-		}
-
-		// normal move or capture
-		else setBoard(movePiece(board, from, to));
-
-		setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
+        console.log(newBoard)
+        setBoard(newBoard);
+        setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
+        updateHasMoved();
+    }
+
+    function updateHasMoved() { // Run everytime there's a move
+        // First white Rook or King moved
+        if (board[0][0] !== white.rook) setHasMoved({...hasMoved, wR1: true});
+        if (board[0][7] !== white.rook) setHasMoved({...hasMoved, wR2: true});
+        if (board[0][4] !== white.king) setHasMoved({...hasMoved, wK: true});
+        // First black Rook or King moved
+        if (board[7][0] !== black.rook) setHasMoved({...hasMoved, bR1: true});
+        if (board[7][7] !== black.rook) setHasMoved({...hasMoved, bR2: true});
+        if (board[7][4] !== black.king) setHasMoved({...hasMoved, bK: true});
+    }
+
+    const useAutoMove = (moves: string[], delay: number) => {
+        useEffect(() => {
+            const _move = moves.shift();
+            if (!_move) return;
+            const timeout = setTimeout(() => {
+                if (_move) {
+                    move(_move);
+                }
+            }, delay)
+            return () => { clearTimeout(timeout); }
+        }, [moves, historyIndex]);
 	}
 
+	function updateRookAfterCastling(newBoard: string[][], from: [number, number], to: [number, number]) {
+		
+
+		// King: Castling
+        if (DEBUG == true) console.log("handleMove", from, to);
+		if ((board[from[0]][from[1]] === white.king || board[from[0]][from[1]] === black.king)){
+			if (to[1] === 2) { // Queenside castling
+				// newBoard = movePiece(newBoard, from, to);// move the king
+				newBoard = movePiece(newBoard, [from[0], 0], [from[0], 3]); // move the rook
+                setHasMoved({ ...hasMoved, wK: isWhiteTurn() ? true : hasMoved.wK, wR1: isWhiteTurn() ? true : hasMoved.wR1, wR2: hasMoved.wR2, bK: !isWhiteTurn() ? true : hasMoved.bK, bR1: !isWhiteTurn() ? true : hasMoved.bR1, bR2: hasMoved.bR2 });
+			} else if (to[1] === 6) { // kingside castling
+				// newBoard = movePiece(newBoard, from, to); // move the king
+				newBoard = movePiece(newBoard, [from[0], 7], [from[0], 5]); // move the rook
+                setHasMoved({ ...hasMoved, wK: isWhiteTurn() ? true : hasMoved.wK, wR1: hasMoved.wR1, wR2: isWhiteTurn() ? true : hasMoved.wR2, bK: !isWhiteTurn() ? true : hasMoved.bK, bR1: hasMoved.bR1, bR2: !isWhiteTurn() ? true : hasMoved.bR2 });
+			}
+			return newBoard;
+		}
+        return newBoard;
+	}
+    function updateOtherPawnAfterEnPassant(newBoard: string[][], from: [number, number], to: [number, number]) {
+        // Pawn: En passant capture
+		if ((newBoard[from[0]][from[1]] === white.pawn || 
+			newBoard[from[0]][from[1]] === black.pawn) && 
+			getPossibleMoves(newBoard, newBoard[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from).some(p => p.from[0] === to[0] && p.from[1] === to[1] && p.isEnPassant === true)) {
+			let direction = newBoard[from[0]][from[1]] === white.pawn ? 1 : -1;
+			return removePiece(movePiece(newBoard, from, to), [to[0] - direction, to[1]]);
+		}
+        return newBoard;
+    }
+
 	return { 
-		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove, updateBoard, move,
+		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove, updateBoard, move, useAutoMove,
 		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from)
 	};
 }
 
-function rowChar(row: number) {
-    return String.fromCharCode(49 + row); // 49 is '1'; 0 -> '1', ..., 7 -> '8'
+export function printBoard(board: string[][]) {
+    for (const row of board) {
+        console.log(row.join(''));
+    }
 }
-function colChar(col: number) {
-    return String.fromCharCode(97 + col); // 97 is 'a'; 0 -> 'a', 1 -> 'b', ..., 7 -> 'h'
-}
+
+// function rowChar(row: number) {
+//     return String.fromCharCode(49 + row); // 49 is '1'; 0 -> '1', ..., 7 -> '8'
+// }
+// function colChar(col: number) {
+//     return String.fromCharCode(97 + col); // 97 is 'a'; 0 -> 'a', 1 -> 'b', ..., 7 -> 'h'
+// }
 function rowNum(row: string) {
     return parseInt(row) - 1; // '1' -> 0, ..., '8' -> 7
 }

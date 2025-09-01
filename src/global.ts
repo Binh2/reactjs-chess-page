@@ -15,6 +15,8 @@
 // 	pawn: "\u265F"
 // };
 
+export const DEBUG = true;
+
 export const white = {
 	king: 'k',
 	queen: 'q',

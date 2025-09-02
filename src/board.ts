@@ -370,7 +370,7 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
             fromRow,
             fromCol,
             to: [rowNum(groups.to[1]), colNum(groups.to[0])] as [number, number],  
-            promotionPiece: groups.promotionPiece 
+            promotionPiece: groups.promotionPiece && (isWhiteTurn() ? groups.promotionPiece.toUpperCase() : groups.promotionPiece.toLowerCase())
         };
     }
     

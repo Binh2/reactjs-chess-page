@@ -42,8 +42,8 @@ function Board() {
 	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
 	const [ moveInput, setMoveInput ] = useState('');
 	const inputRef = React.useRef<HTMLInputElement>(null);
-	const { board: initialBoard } = readFenNotation(initialPosition);
-	const { board, prevMove, isWhiteTurn, castlingRights, historyIndex, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard });
+	const { board: initialBoard, isWhiteTurn: initialIsWhiteTurn, castlingRights: initialCastlingRights } = readFenNotation(initialPosition);
+	const { board, prevMove, isWhiteTurn, castlingRights, historyIndex, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard, initialIsWhiteTurn, initialCastlingRights });
 
 	useAutoMove(moves, 100);
 	console.log(getFenNotation(board, isWhiteTurn, castlingRights))

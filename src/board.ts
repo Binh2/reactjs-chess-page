@@ -307,12 +307,12 @@ const _initialBoard = [
 
 type HistoryType = string[][][];
 type CastlingRightsType = { K: boolean, Q: boolean, k: boolean, q: boolean }; // Like FEN notation
-export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: BoardType }) {
+export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = true, initialCastlingRights = { K: false, Q: false, k: false, q: false } }: { initialBoard?: BoardType, initialIsWhiteTurn?: boolean, initialCastlingRights?: CastlingRightsType }) {
 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
-	const [ history, setHistory ] = useState<HistoryType>([initialBoard]);
-	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
+	const [ history, setHistory ] = useState<HistoryType>(initialIsWhiteTurn ? [initialBoard] : [initialBoard, initialBoard]); // Temporary solution so there's an index at 1
+	const [ historyIndex, setHistoryIndex ] = useState<number>(initialIsWhiteTurn ? 0 : 1);
 	const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
-	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>({ K: false, Q: false, k: false, q: false });
+	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>(initialCastlingRights);
 
 	function isWhiteTurn() {
 		return historyIndex % 2 === 0;

@@ -11,23 +11,6 @@ export type PossibleMovesType = ({
 })[];
 type HasMovedType = { wK: boolean, wR1: boolean, wR2: boolean, bK: boolean, bR1: boolean, bR2: boolean };
 
-export function movePiece(board: BoardType, from: [number, number], to: [number, number]) {
-    console.log("movePiece", from, to);
-	let [fromRow, fromCol] = from;
-	let [toRow, toCol] = to;
-
-	let newBoard = board.map(r => r.slice())
-	newBoard[toRow][toCol] = board[fromRow][fromCol];
-	newBoard[fromRow][fromCol] = '.';
-	return newBoard;
-}
-export function removePiece(board: BoardType, at: [number, number]) { // for en passant
-	console.log("removePiece", at)
-	let [row, col] = at;
-	let newBoard = board.map(r => r.slice())
-	newBoard[row][col] = '.';
-	return newBoard;
-}
 export function pawnForwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number]) {
     let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
@@ -360,7 +343,7 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
             to: isWhiteTurn() ? [0, 2] : [7, 2],
         };
 
-        const re = /(?<piece>[RNBQK])?(?<from>[a-h]?[1-8]?)(?<isCaptured>x?)(?<to>[a-h][1-8])(?<promotionPiece>(=[RNBQ])?)(?<isCheck>\+?)(?<isCheckMate>#?)/g;
+        const re = /(?<piece>[RNBQK])?(?<from>[a-h]?[1-8]?)(?<isCaptured>x?)(?<to>[a-h][1-8])(=(?<promotionPiece>[RNBQ]))?(?<isCheck>\+?)(?<isCheckMate>#?)/g;
         const match = re.exec(move);
         if (!match) throw new Error(`Invalid move format: ${move}`);
         const { groups } = match;
@@ -384,13 +367,11 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         return { 
             type: 'normal', 
             piece: piece, 
-            // from: (fromRow !== undefined || fromCol !== undefined) ? [fromRow, fromCol] : undefined as [number, number] | undefined,
             fromRow,
             fromCol,
             to: [rowNum(groups.to[1]), colNum(groups.to[0])] as [number, number],  
             promotionPiece: groups.promotionPiece 
         };
-        // return { type: 'unknown' };
     }
     
 
@@ -400,6 +381,8 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         let from = [fromRow, fromCol] as [number, number];
         let [ toRow, toCol ] = to;
         let possibleMoves = [] as PossibleMovesType;
+        let isCastling = parsedMove.type === 'shortCastle' || parsedMove.type === 'longCastle' ? true : false;
+        let isEnPassant = false;
 
         if (DEBUG === true) console.log('parsedMove', parsedMove);
         if (parsedMove.type === 'shortCastle') { // Handle short castling
@@ -409,15 +392,13 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         else if (parsedMove.type === 'longCastle') { // Handle long castling
             possibleMoves.push(...kingCastlingBackwardMoves('longCastle', isWhiteTurn()));
         }
-        
         else if (parsedMove.type !== 'normal' || !parsedMove.to) throw new Error(`Invalid move type: ${move}`);
-        
-        
-        else {
+        else if (parsedMove.promotionPiece && 'QBNRqbnr'.includes(parsedMove.promotionPiece)) {
+            // not implemented calling possible moves
+            // throw new Error(`Pawn promotion not implemented yet: ${move}`);
+            possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
+        } else {
             // Handle normal moves
-            // piece = parsedMove.piece, to = parsedMove.to, promotionPiece = parsedMove.promotionPiece;
-            // toRow = to[0], toCol = to[1];
-            // let possibleMoves: PossibleMovesType = [];
             if (parsedMove.piece === white.pawn || parsedMove.piece === black.pawn) {
                 if (DEBUG) console.log("pawn moves")
                 possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
@@ -457,18 +438,19 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
         console.log(board)
 
-        handleMove(board, from, to);
+        handleMove(board, from, to, promotionPiece, isCastling);
 	}
 
-    function handleMove(board: string[][], from: [number, number], to: [number, number]) {
+    function handleMove(board: string[][], from: [number, number], to: [number, number], promotionPiece?: string, isCastling?: boolean) {
         console.log("handleMove", from, to);
         let newBoard = movePiece(board, from, to);
 
 		// const from = possibleMoves.filter(m => board[m[0]][m[1]] === piece)[0]; // Still need to fix
 		// if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
         // movePiece(board, from as [number, number], [toRow, toCol])
-		newBoard = updateRookAfterCastling(newBoard, from, to);
+		if (isCastling) newBoard = updateRookAfterCastling(newBoard, from, to);
         newBoard = updateOtherPawnAfterEnPassant(newBoard, from, to);
+        if (promotionPiece) newBoard = updatePawnToPromotedPiece(newBoard, from, to, promotionPiece);
 
         console.log(newBoard)
         setBoard(newBoard);
@@ -476,6 +458,36 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
         updateHasMoved();
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+        if (event.key === 'ArrowLeft') {
+            moveHistoryBackward();
+        } else if (event.key === 'ArrowRight') {
+            moveHistoryForward();
+        }
+    }
+    function useKeyDownEvent() {
+        useEffect(() => {
+            document.addEventListener('keydown', handleKeyDown);
+            return () => {
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+        }, [moveHistoryBackward, moveHistoryForward,historyIndex]);
+    }
+
+    function moveHistoryBackward() {
+        console.log('moveHistoryBackward');
+        if (historyIndex > 0) {
+            setHistoryIndex(historyIndex - 1);
+            setBoard(history[historyIndex - 1]);
+        }
+    }
+    function moveHistoryForward() {
+        if (historyIndex < history.length - 1) {
+            setHistoryIndex(historyIndex + 1);
+            setBoard(history[historyIndex + 1]);
+        }
     }
 
     function updateHasMoved() { // Run everytime there's a move
@@ -490,6 +502,7 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
     }
 
     const useAutoMove = (moves: string[], delay: number) => {
+        // if (DEBUG)debugger;
         useEffect(() => {
             const _move = moves.shift();
             if (!_move) return;
@@ -501,6 +514,12 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
             return () => { clearTimeout(timeout); }
         }, [moves, historyIndex]);
 	}
+
+    function updatePawnToPromotedPiece(newBoard: string[][], from: [number, number], to: [number, number], promotionPiece: string) {
+        if (DEBUG == true) console.log("updatePawnToPromotedPiece", to, promotionPiece);
+        newBoard = changePiece(newBoard, to, promotionPiece);
+        return newBoard;
+    }
 
 	function updateRookAfterCastling(newBoard: string[][], from: [number, number], to: [number, number]) {
 		// King: Castling
@@ -532,6 +551,8 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
 
 	return { 
 		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove, updateBoard, move, useAutoMove,
+        moveHistoryBackward, moveHistoryForward,
+        useKeyDownEvent,
 		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from)
 	};
 }
@@ -600,4 +621,29 @@ function isUppercase(char: string) {
 }
 function isLowercase(char: string) {
     return char === char.toLowerCase();
+}
+
+export function movePiece(board: BoardType, from: [number, number], to: [number, number]) {
+    if (DEBUG) console.log("movePiece", from, to);
+	let [fromRow, fromCol] = from;
+	let [toRow, toCol] = to;
+
+	let newBoard = board.map(r => r.slice())
+	newBoard[toRow][toCol] = board[fromRow][fromCol];
+	newBoard[fromRow][fromCol] = '.';
+	return newBoard;
+}
+export function removePiece(board: BoardType, at: [number, number]) { // for en passant
+	if (DEBUG) console.log("removePiece", at)
+	let [row, col] = at;
+	let newBoard = board.map(r => r.slice())
+	newBoard[row][col] = '.';
+	return newBoard;
+}
+export function changePiece(board: BoardType, at: [number, number], toPiece: string) { // for pawn promotion
+	if (DEBUG) console.log("changePiece", at, toPiece);
+	let [row, col] = at;
+	let newBoard = board.map(r => r.slice())
+	newBoard[row][col] = toPiece;
+	return newBoard;
 }

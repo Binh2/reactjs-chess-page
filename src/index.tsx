@@ -43,10 +43,10 @@ function Board() {
 	const [ moveInput, setMoveInput ] = useState('');
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const { board: initialBoard, isWhiteTurn: initialIsWhiteTurn, castlingRights: initialCastlingRights } = readFenNotation(initialPosition);
-	const { board, prevMove, isWhiteTurn, castlingRights, historyIndex, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard, initialIsWhiteTurn, initialCastlingRights });
+	const { board, prevMove, isWhiteTurn, castlingRights, historyIndex, halfMovesNum, fullMovesNum, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard, initialIsWhiteTurn, initialCastlingRights });
 
 	useAutoMove(moves, 100);
-	console.log(getFenNotation(board, isWhiteTurn, castlingRights))
+	console.log(getFenNotation(board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum))
 	function handleKeyDown(event: React.KeyboardEvent) {
 		// if (DEBUG) debugger;
 		if ('abcdefgh12345678'.includes(event.key)) {
@@ -133,7 +133,7 @@ function Board() {
 			return;
 		} else {
 			console.log('handle move')
-			handleMove(board, selected, [row, col]);
+			handleMove(board, board[selected[0]][selected[1]], selected, [row, col], board[row][col] !== '.' ? true : false);
 		}
 		
 		setSelected(null);

@@ -314,6 +314,8 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     const [ isWhiteTurn, setIsWhiteTurn ] = useState<boolean>(initialIsWhiteTurn);
 	const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
 	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>(initialCastlingRights);
+    const [ halfMovesNum, setHalfMovesNum ] = useState<number>(0);
+    const [ fullMovesNum, setFullMovesNum ] = useState<number>(1);
 
 	function updateBoard(newBoard: BoardType) {
 		setBoard(newBoard);
@@ -323,13 +325,14 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 	}
     
 
-    function parseMove(move: string): {type: 'shortCastle' | 'longCastle' | 'normal', piece: string, fromRow?: number, fromCol?: number, to: [number, number], promotionPiece?: string} {
+    function parseMove(move: string): {type: 'shortCastle' | 'longCastle' | 'normal', piece: string, fromRow?: number, fromCol?: number, to: [number, number], isCapture: boolean, promotionPiece?: string} {
         if (move === 'O-O') return { 
             type: 'shortCastle', 
             piece: isWhiteTurn ? white.king : black.king,
             fromRow: isWhiteTurn ? 0 : 7,
             fromCol: 4,
             to: isWhiteTurn ? [0, 6] : [7, 6],
+            isCapture: false
         };
         if (move === 'O-O-O') return { 
             type: 'longCastle', 
@@ -337,6 +340,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
             fromRow: isWhiteTurn ? 0 : 7,
             fromCol: 4,
             to: isWhiteTurn ? [0, 2] : [7, 2],
+            isCapture: false
         };
 
         const re = /(?<piece>[RNBQK])?(?<from>[a-h]?[1-8]?)(?<isCaptured>x?)(?<to>[a-h][1-8])(=(?<promotionPiece>[RNBQ]))?(?<isCheck>\+?)(?<isCheckMate>#?)/g;
@@ -365,7 +369,8 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
             piece: piece, 
             fromRow,
             fromCol,
-            to: [rowNum(groups.to[1]), colNum(groups.to[0])] as [number, number],  
+            to: [rowNum(groups.to[1]), colNum(groups.to[0])] as [number, number], 
+            isCapture: groups.isCaptured === 'x',
             promotionPiece: groups.promotionPiece && (isWhiteTurn ? groups.promotionPiece.toUpperCase() : groups.promotionPiece.toLowerCase())
         };
     }
@@ -373,11 +378,12 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 
 	function move(move: string) {
         let parsedMove = parseMove(move);
-        let { piece, fromRow, fromCol, to, promotionPiece } = parsedMove;
+        let { piece, fromRow, fromCol, to, promotionPiece, isCapture } = parsedMove;
         let from = [fromRow, fromCol] as [number, number];
         let [ toRow, toCol ] = to;
         let possibleMoves = [] as PossibleMovesType;
         let isCastling = parsedMove.type === 'shortCastle' || parsedMove.type === 'longCastle' ? true : false;
+
         let isEnPassant = false;
 
         if (DEBUG === true) console.log('parsedMove', parsedMove);
@@ -434,10 +440,10 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
         console.log(board)
 
-        handleMove(board, from, to, promotionPiece, isCastling);
+        handleMove(board, piece, from, to, isCapture, promotionPiece, isCastling);
 	}
 
-    function handleMove(board: string[][], from: [number, number], to: [number, number], promotionPiece?: string, isCastling?: boolean) {
+    function handleMove(board: string[][], piece: string, from: [number, number], to: [number, number], isCapture: boolean, promotionPiece?: string, isCastling?: boolean) {
         console.log("handleMove", from, to);
         let newBoard = movePiece(board, from, to);
 
@@ -454,6 +460,9 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
         setIsWhiteTurn(!isWhiteTurn);
+        if (isCapture || piece == white.pawn || piece == black.pawn) setHalfMovesNum(0);
+        else setHalfMovesNum(halfMovesNum + 1);
+        if (!isWhiteTurn) setFullMovesNum(fullMovesNum + 1);
         updateCastlingRights();
     }
 
@@ -478,6 +487,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         if (historyIndex > 0) {
             setHistoryIndex(historyIndex - 1);
             setIsWhiteTurn(!isWhiteTurn);
+            if (isWhiteTurn) setFullMovesNum(fullMovesNum - 1);
             setBoard(history[historyIndex - 1]);
         }
     }
@@ -485,6 +495,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         if (historyIndex < history.length - 1) {
             setHistoryIndex(historyIndex + 1);
             setIsWhiteTurn(!isWhiteTurn);
+            if (isWhiteTurn) setFullMovesNum(fullMovesNum - 1);
             setBoard(history[historyIndex + 1]);
         }
     }
@@ -549,14 +560,15 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     }
 
 	return { 
-		board, history, historyIndex, prevMove, isWhiteTurn, castlingRights, handleMove, updateBoard, move, useAutoMove,
+		board, history, historyIndex, prevMove, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum, 
+        handleMove, updateBoard, move, useAutoMove,
         moveHistoryBackward, moveHistoryForward,
         useKeyDownEvent,
 		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn, castlingRights, from)
 	};
 }
 
-export function getFenNotation(board: string[][], isWhiteTurn: boolean, castlingRights: CastlingRightsType) {
+export function getFenNotation(board: string[][], isWhiteTurn: boolean, castlingRights: CastlingRightsType, halfMovesNum: number, fullMovesNum: number) {
     let fen = '';
     for (let row = 7; row >= 0; row--) {
         let emptySquares = 0;
@@ -580,8 +592,10 @@ export function getFenNotation(board: string[][], isWhiteTurn: boolean, castling
         }
     }
     fen += ` ${isWhiteTurn ? 'w' : 'b'}`;
-    fen += ` ${castlingRights.K ? 'K' : ''}${castlingRights.Q ? 'Q' : ''}${castlingRights.k ? 'k' : ''}${castlingRights.q ? 'q' : ''}`;
-    fen += ` - 0 1`
+    const fenCastlingRights = `${castlingRights.K ? 'K' : ''}${castlingRights.Q ? 'Q' : ''}${castlingRights.k ? 'k' : ''}${castlingRights.q ? 'q' : ''}`;
+    fen += ` ${fenCastlingRights || '-'}`;
+    fen += ` - ${halfMovesNum}`;
+    fen += ` ${fullMovesNum}`;
     return fen;
 }
 export function readFenNotation(fen: string) {
@@ -600,7 +614,9 @@ export function readFenNotation(fen: string) {
         k: parts[2].includes('k'),
         q: parts[2].includes('q'),
     };
-    return { board, isWhiteTurn, castlingRights };
+    const halfMovesNum = parseInt(parts[4]);
+    const fullMovesNum = parseInt(parts[5]);
+    return { board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum };
 }
 
 // function rowChar(row: number) {

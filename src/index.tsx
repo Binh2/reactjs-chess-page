@@ -43,10 +43,10 @@ function Board() {
 	const [ moveInput, setMoveInput ] = useState('');
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const { board: initialBoard } = readFenNotation(initialPosition);
-	const { board, prevMove, isWhiteTurn, hasMoved, historyIndex, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard });
+	const { board, prevMove, isWhiteTurn, castlingRights, historyIndex, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard });
 
 	useAutoMove(moves, 100);
-	console.log(getFenNotation(board, isWhiteTurn, hasMoved))
+	console.log(getFenNotation(board, isWhiteTurn, castlingRights))
 	function handleKeyDown(event: React.KeyboardEvent) {
 		// if (DEBUG) debugger;
 		if ('abcdefgh12345678'.includes(event.key)) {

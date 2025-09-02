@@ -9,9 +9,8 @@ export type PossibleMovesType = ({
     isCastling?: boolean,
     isEnPassant?: boolean
 })[];
-type HasMovedType = { wK: boolean, wR1: boolean, wR2: boolean, bK: boolean, bR1: boolean, bR2: boolean };
 
-export function pawnForwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number]) {
+export function pawnForwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, from: [number, number]) {
     let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
     let direction = piece === white.pawn ? 1 : -1;
@@ -52,7 +51,7 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
     }
     return moves;
 }
-export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, to: [number, number], allowMoveOnSelf=false): PossibleMovesType {
+export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, to: [number, number], allowMoveOnSelf=false): PossibleMovesType {
     let [toRow, toCol] = to;
     let moves: PossibleMovesType = [];
     let direction = piece === white.pawn ? 1 : -1;
@@ -221,29 +220,27 @@ export function kingNormalMoves(board: BoardType, piece: string, from: [number, 
     }
     return moves;
 }
-export function kingCastlingMoves(board: BoardType, piece: string, from: [number, number], hasMoved: HasMovedType) {
-    if (DEBUG === true) console.log("kingCastlingMoves", piece, from, hasMoved)
+export function kingCastlingMoves(board: BoardType, piece: string, from: [number, number], castlingRights: CastlingRightsType) {
+    if (DEBUG === true) console.log("kingCastlingMoves", piece, from, castlingRights)
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
     
     if (piece === white.king && board[0][4] === white.king && // White king: Queenside castling
-        !hasMoved['wK'] &&
-        !hasMoved['wR1'] && board[0][0] === white.rook &&
+        castlingRights['Q'] && board[0][0] === white.rook &&
         board[0][1] === '.' && board[0][2] === '.' && board[0][3] === '.') {
         moves.push({ from, to: [0, 2], isCastling: true }); // true indicates castling
     } else if (piece === white.king && board[0][4] === white.king && // White king: Kingside castling
-        !hasMoved['wK'] &&
-        !hasMoved['wR2'] && board[0][7] === white.rook &&
+        castlingRights['K'] && board[0][7] === white.rook &&
         board[0][5] === '.' && board[0][6] === '.') {
         moves.push({ from, to: [0, 6], isCastling: true }); // true indicates castling
     } else if (piece === black.king && board[7][4] === black.king && // Black king: Queenside castling
-        !hasMoved['bK'] &&
-        !hasMoved['bR1'] && board[7][0] === black.rook &&
+        castlingRights['q'] &&
+        board[7][0] === black.rook &&
         board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.') {
         moves.push({ from, to: [7, 2], isCastling: true }); // true indicates castling
     } else if (piece === black.king && board[7][4] === black.king && // Black king: Kingside castling
-        !hasMoved['bK'] &&
-        !hasMoved['bR2'] && board[7][7] === black.rook &&
+        castlingRights['k'] &&
+        board[7][7] === black.rook &&
         board[7][5] === '.' && board[7][6] === '.') {
         moves.push({ from, to: [7, 6], isCastling: true }); // true indicates castling
     }
@@ -261,16 +258,16 @@ export function kingCastlingBackwardMoves(type: string, isWhiteTurn: boolean): P
     }
     return [];
 }
-export function kingMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number]) {
+export function kingMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number]) {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
 
     moves.push(...kingNormalMoves(board, piece, from));
-    moves.push(...kingCastlingMoves(board, piece, from, hasMoved));
+    moves.push(...kingCastlingMoves(board, piece, from, castlingRights));
     return moves;
 }
 type PrevMoveType = {piece: string, capturedPiece: string, from: [number, number], to: [number, number]} | null;
-export function getPossibleMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, hasMoved: HasMovedType, from: [number, number] ) {
+export function getPossibleMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number] ) {
 	let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
 	
@@ -280,7 +277,7 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 	if (!isWhiteTurn && !Object.values(black).includes(piece)) return [];
 
     if (piece === white.pawn || piece === black.pawn) 
-        return pawnForwardMoves(board, piece, prevMove, isWhiteTurn, hasMoved, from);
+        return pawnForwardMoves(board, piece, prevMove, isWhiteTurn, from);
 	else if (piece === white.rook || piece === black.rook) { // Rook moves
 		return rookMoves(board, piece, from);
 	} else if (piece === white.knight || piece === black.knight) { // Knight moves
@@ -290,7 +287,7 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 	} else if (piece === white.queen || piece === black.queen) { // Queen moves
 		return queenMoves(board, piece, from);
 	} else if (piece === white.king || piece === black.king) { // King moves
-		return kingMoves(board, piece, prevMove, isWhiteTurn, hasMoved, from);
+		return kingMoves(board, piece, prevMove, isWhiteTurn, castlingRights, from);
 	}
 	return []; 
 }
@@ -309,12 +306,13 @@ const _initialBoard = [
 
 
 type HistoryType = string[][][];
+type CastlingRightsType = { K: boolean, Q: boolean, k: boolean, q: boolean }; // Like FEN notation
 export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: BoardType }) {
 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
 	const [ history, setHistory ] = useState<HistoryType>([initialBoard]);
 	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
 	const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
-	const [ hasMoved, setHasMoved ] = useState<HasMovedType>({ wK: false, wR1: false, wR2: false, bK: false, bR1: false, bR2: false });
+	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>({ K: false, Q: false, k: false, q: false });
 
 	function isWhiteTurn() {
 		return historyIndex % 2 === 0;
@@ -396,12 +394,12 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         else if (parsedMove.promotionPiece && 'QBNRqbnr'.includes(parsedMove.promotionPiece)) {
             // not implemented calling possible moves
             // throw new Error(`Pawn promotion not implemented yet: ${move}`);
-            possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
+            possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), to, true));
         } else {
             // Handle normal moves
             if (parsedMove.piece === white.pawn || parsedMove.piece === black.pawn) {
                 if (DEBUG) console.log("pawn moves")
-                possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), hasMoved, to, true));
+                possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn(), to, true));
             }
             else {
                 if (piece === white.rook || piece === black.rook) { // Rook moves
@@ -457,7 +455,7 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
-        updateHasMoved();
+        updateCastlingRights();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -490,15 +488,15 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         }
     }
 
-    function updateHasMoved() { // Run everytime there's a move
+    function updateCastlingRights() {
         // First white Rook or King moved
-        if (board[0][0] !== white.rook) setHasMoved({...hasMoved, wR1: true});
-        if (board[0][7] !== white.rook) setHasMoved({...hasMoved, wR2: true});
-        if (board[0][4] !== white.king) setHasMoved({...hasMoved, wK: true});
+        if (board[0][0] !== white.rook) setCastlingRights({...castlingRights, Q: false});
+        if (board[0][7] !== white.rook) setCastlingRights({...castlingRights, K: false});
+        if (board[0][4] !== white.king) setCastlingRights({...castlingRights, Q: false, K: false});
         // First black Rook or King moved
-        if (board[7][0] !== black.rook) setHasMoved({...hasMoved, bR1: true});
-        if (board[7][7] !== black.rook) setHasMoved({...hasMoved, bR2: true});
-        if (board[7][4] !== black.king) setHasMoved({...hasMoved, bK: true});
+        if (board[7][0] !== black.rook) setCastlingRights({...castlingRights, q: false});
+        if (board[7][7] !== black.rook) setCastlingRights({...castlingRights, k: false});
+        if (board[7][4] !== black.king) setCastlingRights({...castlingRights, q: false, k: false});
     }
 
     const useAutoMove = (moves: string[], delay: number) => {
@@ -528,11 +526,11 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
 			if (to[1] === 2) { // Queenside castling
 				// newBoard = movePiece(newBoard, from, to);// move the king
 				newBoard = movePiece(newBoard, [from[0], 0], [from[0], 3]); // move the rook
-                setHasMoved({ ...hasMoved, wK: isWhiteTurn() ? true : hasMoved.wK, wR1: isWhiteTurn() ? true : hasMoved.wR1, wR2: hasMoved.wR2, bK: !isWhiteTurn() ? true : hasMoved.bK, bR1: !isWhiteTurn() ? true : hasMoved.bR1, bR2: hasMoved.bR2 });
+                setCastlingRights({ ...castlingRights, [isWhiteTurn() ? 'K' : 'k']: false, [isWhiteTurn() ? 'Q' : 'q']: false });
 			} else if (to[1] === 6) { // kingside castling
 				// newBoard = movePiece(newBoard, from, to); // move the king
 				newBoard = movePiece(newBoard, [from[0], 7], [from[0], 5]); // move the rook
-                setHasMoved({ ...hasMoved, wK: isWhiteTurn() ? true : hasMoved.wK, wR1: hasMoved.wR1, wR2: isWhiteTurn() ? true : hasMoved.wR2, bK: !isWhiteTurn() ? true : hasMoved.bK, bR1: hasMoved.bR1, bR2: !isWhiteTurn() ? true : hasMoved.bR2 });
+                setCastlingRights({ ...castlingRights, [isWhiteTurn() ? 'K' : 'k']: false, [isWhiteTurn() ? 'Q' : 'q']: false });
 			}
 			return newBoard;
 		}
@@ -542,7 +540,7 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
         // Pawn: En passant capture
 		if ((newBoard[from[0]][from[1]] === white.pawn || 
 			newBoard[from[0]][from[1]] === black.pawn) && 
-			getPossibleMoves(newBoard, newBoard[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from).some(p => p.from[0] === to[0] && p.from[1] === to[1] && p.isEnPassant === true)) {
+			getPossibleMoves(newBoard, newBoard[from[0]][from[1]], prevMove, isWhiteTurn(), castlingRights, from).some(p => p.from[0] === to[0] && p.from[1] === to[1] && p.isEnPassant === true)) {
 			let direction = newBoard[from[0]][from[1]] === white.pawn ? 1 : -1;
 			return removePiece(movePiece(newBoard, from, to), [to[0] - direction, to[1]]);
 		}
@@ -550,14 +548,14 @@ export function useBoard({ initialBoard = _initialBoard }: { initialBoard?: Boar
     }
 
 	return { 
-		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), hasMoved, handleMove, updateBoard, move, useAutoMove,
+		board, history, historyIndex, prevMove, isWhiteTurn: isWhiteTurn(), castlingRights, handleMove, updateBoard, move, useAutoMove,
         moveHistoryBackward, moveHistoryForward,
         useKeyDownEvent,
-		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), hasMoved, from)
+		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn(), castlingRights, from)
 	};
 }
 
-export function getFenNotation(board: string[][], isWhiteTurn: boolean, hasMoved: HasMovedType) {
+export function getFenNotation(board: string[][], isWhiteTurn: boolean, castlingRights: CastlingRightsType) {
     let fen = '';
     for (let row = 7; row >= 0; row--) {
         let emptySquares = 0;
@@ -581,7 +579,7 @@ export function getFenNotation(board: string[][], isWhiteTurn: boolean, hasMoved
         }
     }
     fen += ` ${isWhiteTurn ? 'w' : 'b'}`;
-    fen += ` ${!hasMoved.wK && !hasMoved.wR2 ? 'K' : ''}${!hasMoved.wK && !hasMoved.wR1 ? 'Q' : ''}${!hasMoved.bK && !hasMoved.bR2 ? 'k' : ''}${!hasMoved.bK && !hasMoved.bR1 ? 'q' : ''}`;
+    fen += ` ${castlingRights.K ? 'K' : ''}${castlingRights.Q ? 'Q' : ''}${castlingRights.k ? 'k' : ''}${castlingRights.q ? 'q' : ''}`;
     fen += ` - 0 1`
     return fen;
 }
@@ -594,14 +592,14 @@ export function readFenNotation(fen: string) {
         }).join('');
         return expanded.split('');
     }).splice(0).reverse();
-    // const isWhiteTurn = parts[1] === 'w';
-    // const hasMoved: HasMovedType = {
-    //     wK: parts[2].includes('K'),
-    //     wQ: parts[2].includes('Q'),
-    //     bK: parts[2].includes('k'),
-    //     bQ: parts[2].includes('q'),
-    // };
-    return { board };
+    const isWhiteTurn = parts[1] === 'w';
+    const castlingRights: CastlingRightsType = {
+        K: parts[2].includes('K'),
+        Q: parts[2].includes('Q'),
+        k: parts[2].includes('k'),
+        q: parts[2].includes('q'),
+    };
+    return { board, isWhiteTurn, castlingRights };
 }
 
 // function rowChar(row: number) {

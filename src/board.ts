@@ -307,7 +307,7 @@ const _initialBoard = [
 
 type HistoryType = string[][][];
 type CastlingRightsType = { K: boolean, Q: boolean, k: boolean, q: boolean }; // Like FEN notation
-export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = true, initialCastlingRights = { K: false, Q: false, k: false, q: false } }: { initialBoard?: BoardType, initialIsWhiteTurn?: boolean, initialCastlingRights?: CastlingRightsType }) {
+export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = true, initialCastlingRights = { K: true, Q: true, k: true, q: true } }: { initialBoard?: BoardType, initialIsWhiteTurn?: boolean, initialCastlingRights?: CastlingRightsType }) {
 	const [ board, setBoard ] = useState<BoardType>(initialBoard);
 	const [ history, setHistory ] = useState<HistoryType>([initialBoard]); // Temporary solution so there's an index at 1
 	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
@@ -316,6 +316,10 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>(initialCastlingRights);
     const [ halfMovesNum, setHalfMovesNum ] = useState<number>(0);
     const [ fullMovesNum, setFullMovesNum ] = useState<number>(1);
+
+    const [ fenNotations, setFenNotations ] = useState<{move: string, fen: string}[]>([]);
+
+    console.log('useBoard isWhiteTurn', isWhiteTurn);
 
 	function updateBoard(newBoard: BoardType) {
 		setBoard(newBoard);
@@ -349,7 +353,10 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         const { groups } = match;
         if (!groups) throw new Error(`Invalid move format: ${move}`);
         let piece = groups.piece || (isWhiteTurn ? white.pawn : black.pawn);
+        console.log('parseMove() isWhiteTurn', isWhiteTurn);
+        console.log('piece', piece);
         piece = isWhiteTurn ? piece.toUpperCase() : piece.toLowerCase();
+        console.log('piece',piece)
         if (!piece) throw new Error(`Invalid move format: ${move}`);
         let fromRow = undefined;
         let fromCol = undefined;
@@ -377,6 +384,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     
 
 	function move(move: string) {
+        console.log('move() isWhiteTurn', isWhiteTurn)
         let parsedMove = parseMove(move);
         let { piece, fromRow, fromCol, to, promotionPiece, isCapture } = parsedMove;
         let from = [fromRow, fromCol] as [number, number];
@@ -386,10 +394,9 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 
         let isEnPassant = false;
 
-        if (DEBUG === true) console.log('parsedMove', parsedMove);
+        if (DEBUG) console.log('parsedMove', parsedMove);
         if (parsedMove.type === 'shortCastle') { // Handle short castling
             possibleMoves.push(...kingCastlingBackwardMoves('shortCastle', isWhiteTurn));
-            // possibleMoves.push([0,4])
         }
         else if (parsedMove.type === 'longCastle') { // Handle long castling
             possibleMoves.push(...kingCastlingBackwardMoves('longCastle', isWhiteTurn));
@@ -438,13 +445,16 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         if (possibleMoves.length > 1) throw new Error(`Invalid move (${move}): ambiguous move, multiple same piece can move to the target square`);
         from = possibleMoves[0].from;
         if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
-        console.log(board)
+        // console.log(board)
 
-        handleMove(board, piece, from, to, isCapture, promotionPiece, isCastling);
+        setFenNotations([...fenNotations, {move, fen: getFenNotation(board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum)}]);
+        handleMove(board, piece, from, to, isWhiteTurn, isCapture, promotionPiece, isCastling);
+        console.log('\n\n')
 	}
 
-    function handleMove(board: string[][], piece: string, from: [number, number], to: [number, number], isCapture: boolean, promotionPiece?: string, isCastling?: boolean) {
+    function handleMove(board: string[][], piece: string, from: [number, number], to: [number, number], isWhiteTurn: boolean, isCapture: boolean, promotionPiece?: string, isCastling?: boolean) {
         console.log("handleMove", from, to);
+        console.log('original isWhiteTurn', isWhiteTurn);
         let newBoard = movePiece(board, from, to);
 
 		// const from = possibleMoves.filter(m => board[m[0]][m[1]] === piece)[0]; // Still need to fix
@@ -454,12 +464,14 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         newBoard = updateOtherPawnAfterEnPassant(newBoard, from, to);
         if (promotionPiece) newBoard = updatePawnToPromotedPiece(newBoard, from, to, promotionPiece);
 
-        console.log(newBoard)
+        // console.log(newBoard)
         setBoard(newBoard);
         setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
+        console.log('updating isWhiteTurn', isWhiteTurn);
         setIsWhiteTurn(!isWhiteTurn);
+        console.log('updated isWhiteTurn', isWhiteTurn);
         if (isCapture || piece == white.pawn || piece == black.pawn) setHalfMovesNum(0);
         else setHalfMovesNum(halfMovesNum + 1);
         if (!isWhiteTurn) setFullMovesNum(fullMovesNum + 1);
@@ -471,6 +483,8 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
             moveHistoryBackward();
         } else if (event.key === 'ArrowRight') {
             moveHistoryForward();
+        } else if (event.key === 'Enter') {
+            console.log(JSON.stringify(fenNotations));
         }
     }
     function useKeyDownEvent() {
@@ -598,7 +612,7 @@ export function getFenNotation(board: string[][], isWhiteTurn: boolean, castling
     fen += ` ${fullMovesNum}`;
     return fen;
 }
-export function readFenNotation(fen: string) {
+export function parseFenNotation(fen: string) {
     const parts = fen.split(' ');
     const board = parts[0].split('/').map(row => {
         const expanded = row.split('').map(char => {

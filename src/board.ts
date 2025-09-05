@@ -10,7 +10,7 @@ export type PossibleMovesType = ({
     isEnPassant?: boolean
 })[];
 
-export function pawnForwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, from: [number, number]) {
+export function pawnForwardMoves(board: BoardType, piece: string, enPassentTarget: [number, number] | null, isWhiteTurn: boolean, from: [number, number]) {
     let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
     let direction = piece === white.pawn ? 1 : -1;
@@ -41,17 +41,22 @@ export function pawnForwardMoves(board: BoardType, piece: string, prevMove: Prev
     }
 
     // Pawn: En passant captures
-    if (!prevMove) return moves;
-    if (
-        prevMove.piece === (piece === white.pawn ? black.pawn : white.pawn) &&
-        Math.abs(prevMove.from[0] - prevMove.to[0]) === 2 && // last move was a 2-square pawn move
-        prevMove.to[0] === fromRow && // last move ended on the same row as the pawn
-        Math.abs(prevMove.to[1] - fromCol) === 1) { // last move ended next to the pawn
-        moves.push({ from, to: [fromRow + direction, prevMove.to[1]], isEnPassant: true }); // true indicates en passant
+    if (!enPassentTarget) return moves;
+    if (fromRow === (piece === white.pawn ? 4 : 3) && // Pawn is on the correct rank for en passant
+        Math.abs(enPassentTarget[1] - fromCol) === 1) { // En passant target is adjacent to the pawn
+        moves.push({ from, to: [fromRow + direction, enPassentTarget[1]], isEnPassant: true }); // true indicates en passant
     }
+
+    // if (
+    //     prevMove.piece === (piece === white.pawn ? black.pawn : white.pawn) &&
+    //     Math.abs(prevMove.from[0] - prevMove.to[0]) === 2 && // last move was a 2-square pawn move
+    //     prevMove.to[0] === fromRow && // last move ended on the same row as the pawn
+    //     Math.abs(prevMove.to[1] - fromCol) === 1) { // last move ended next to the pawn
+    //     moves.push({ from, to: [fromRow + direction, prevMove.to[1]], isEnPassant: true }); // true indicates en passant
+    // }
     return moves;
 }
-export function pawnBackwardMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, to: [number, number], allowMoveOnSelf=false): PossibleMovesType {
+export function pawnBackwardMoves(board: BoardType, piece: string, isWhiteTurn: boolean, to: [number, number], allowMoveOnSelf=false): PossibleMovesType {
     let [toRow, toCol] = to;
     let moves: PossibleMovesType = [];
     let direction = piece === white.pawn ? 1 : -1;
@@ -258,7 +263,7 @@ export function kingCastlingBackwardMoves(type: string, isWhiteTurn: boolean): P
     }
     return [];
 }
-export function kingMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number]) {
+export function kingMoves(board: BoardType, piece: string, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number]) {
     let [fromRow, fromCol] = from;
     let moves: PossibleMovesType = [];
 
@@ -267,7 +272,7 @@ export function kingMoves(board: BoardType, piece: string, prevMove: PrevMoveTyp
     return moves;
 }
 type PrevMoveType = {piece: string, capturedPiece: string, from: [number, number], to: [number, number]} | null;
-export function getPossibleMoves(board: BoardType, piece: string, prevMove: PrevMoveType, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number] ) {
+export function getPossibleMoves(board: BoardType, piece: string, enPassentTarget: [number, number] | null, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number] ) {
 	let [fromRow, fromCol] = from;
 	let moves: PossibleMovesType = [];
 	
@@ -277,7 +282,7 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 	if (!isWhiteTurn && !Object.values(black).includes(piece)) return [];
 
     if (piece === white.pawn || piece === black.pawn) 
-        return pawnForwardMoves(board, piece, prevMove, isWhiteTurn, from);
+        return pawnForwardMoves(board, piece, enPassentTarget, isWhiteTurn, from);
 	else if (piece === white.rook || piece === black.rook) { // Rook moves
 		return rookMoves(board, piece, from);
 	} else if (piece === white.knight || piece === black.knight) { // Knight moves
@@ -287,7 +292,7 @@ export function getPossibleMoves(board: BoardType, piece: string, prevMove: Prev
 	} else if (piece === white.queen || piece === black.queen) { // Queen moves
 		return queenMoves(board, piece, from);
 	} else if (piece === white.king || piece === black.king) { // King moves
-		return kingMoves(board, piece, prevMove, isWhiteTurn, castlingRights, from);
+		return kingMoves(board, piece, isWhiteTurn, castlingRights, from);
 	}
 	return []; 
 }
@@ -312,14 +317,13 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 	const [ history, setHistory ] = useState<HistoryType>([initialBoard]); // Temporary solution so there's an index at 1
 	const [ historyIndex, setHistoryIndex ] = useState<number>(0);
     const [ isWhiteTurn, setIsWhiteTurn ] = useState<boolean>(initialIsWhiteTurn);
-	const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
+	// const [ prevMove, setPrevMove ] = useState<PrevMoveType>(null);
+    const [ enPassentTarget, setEnPassentTarget ] = useState<[number, number] | null>(null);
 	const [ castlingRights, setCastlingRights ] = useState<CastlingRightsType>(initialCastlingRights);
     const [ halfMovesNum, setHalfMovesNum ] = useState<number>(0);
     const [ fullMovesNum, setFullMovesNum ] = useState<number>(1);
 
-    const [ fenNotations, setFenNotations ] = useState<{move: string, fen: string}[]>([]);
-
-    console.log('useBoard isWhiteTurn', isWhiteTurn);
+    const [ fenNotations, setFenNotations ] = useState<{move: string, fen: string}[]>([{move: '', fen: getFenNotation(initialBoard, initialIsWhiteTurn, initialCastlingRights, enPassentTarget, 0, 1)}]);
 
 	function updateBoard(newBoard: BoardType) {
 		setBoard(newBoard);
@@ -384,7 +388,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     
 
 	function move(move: string) {
-        console.log('move() isWhiteTurn', isWhiteTurn)
+        if (move === '') return; // Skip empty move (initial state)
         let parsedMove = parseMove(move);
         let { piece, fromRow, fromCol, to, promotionPiece, isCapture } = parsedMove;
         let from = [fromRow, fromCol] as [number, number];
@@ -405,12 +409,12 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         else if (parsedMove.promotionPiece && 'QBNRqbnr'.includes(parsedMove.promotionPiece)) {
             // not implemented calling possible moves
             // throw new Error(`Pawn promotion not implemented yet: ${move}`);
-            possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn, to, true));
+            possibleMoves.push(...pawnBackwardMoves(board, piece, isWhiteTurn, to, true));
         } else {
             // Handle normal moves
             if (parsedMove.piece === white.pawn || parsedMove.piece === black.pawn) {
                 if (DEBUG) console.log("pawn moves")
-                possibleMoves.push(...pawnBackwardMoves(board, piece, prevMove, isWhiteTurn, to, true));
+                possibleMoves.push(...pawnBackwardMoves(board, piece, isWhiteTurn, to, true));
             }
             else {
                 if (piece === white.rook || piece === black.rook) { // Rook moves
@@ -447,14 +451,17 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         if (!from) throw new Error(`Invalid move (${move}): piece not found or move not possible`);
         // console.log(board)
 
-        setFenNotations([...fenNotations, {move, fen: getFenNotation(board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum)}]);
+        // setFenNotations([...fenNotations, {move, fen: getFenNotation(board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum)}]);
+        setFenNotations([
+            ...fenNotations.slice(0, fenNotations.length - 1), 
+            {move: fenNotations[fenNotations.length - 1].move, fen: getFenNotation(board, isWhiteTurn, castlingRights, enPassentTarget, halfMovesNum, fullMovesNum)},
+            {move, fen: ""}
+        ]);
         handleMove(board, piece, from, to, isWhiteTurn, isCapture, promotionPiece, isCastling);
         console.log('\n\n')
 	}
 
     function handleMove(board: string[][], piece: string, from: [number, number], to: [number, number], isWhiteTurn: boolean, isCapture: boolean, promotionPiece?: string, isCastling?: boolean) {
-        console.log("handleMove", from, to);
-        console.log('original isWhiteTurn', isWhiteTurn);
         let newBoard = movePiece(board, from, to);
 
 		// const from = possibleMoves.filter(m => board[m[0]][m[1]] === piece)[0]; // Still need to fix
@@ -466,12 +473,15 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
 
         // console.log(newBoard)
         setBoard(newBoard);
-        setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
+        // setPrevMove({ piece: board[from[0]][from[1]], capturedPiece: board[to[0]][to[1]], from, to });
+        console.log("handleMove enPassentTarget", enPassentTarget)
+        if ((piece === white.pawn || piece === black.pawn) && Math.abs(from[0] - to[0]) === 2) {
+            console.log("Setting enPassentTarget", to)
+            setEnPassentTarget([to[0] - (isWhiteTurn ? 1 : -1), to[1]]);
+        } else setEnPassentTarget(null);
 		setHistory([...history, newBoard]);
 		setHistoryIndex(historyIndex + 1);
-        console.log('updating isWhiteTurn', isWhiteTurn);
         setIsWhiteTurn(!isWhiteTurn);
-        console.log('updated isWhiteTurn', isWhiteTurn);
         if (isCapture || piece == white.pawn || piece == black.pawn) setHalfMovesNum(0);
         else setHalfMovesNum(halfMovesNum + 1);
         if (!isWhiteTurn) setFullMovesNum(fullMovesNum + 1);
@@ -484,7 +494,11 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         } else if (event.key === 'ArrowRight') {
             moveHistoryForward();
         } else if (event.key === 'Enter') {
-            console.log(JSON.stringify(fenNotations));
+            console.log(JSON.stringify(
+                [
+                    ...fenNotations.slice(0, fenNotations.length - 1),
+                    {move: fenNotations[fenNotations.length - 1].move, fen: getFenNotation(board, isWhiteTurn, castlingRights, enPassentTarget, halfMovesNum, fullMovesNum)}
+                ]));
         }
     }
     function useKeyDownEvent() {
@@ -515,14 +529,20 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     }
 
     function updateCastlingRights() {
-        // First white Rook or King moved
-        if (board[0][0] !== white.rook) setCastlingRights({...castlingRights, Q: false});
-        if (board[0][7] !== white.rook) setCastlingRights({...castlingRights, K: false});
-        if (board[0][4] !== white.king) setCastlingRights({...castlingRights, Q: false, K: false});
-        // First black Rook or King moved
-        if (board[7][0] !== black.rook) setCastlingRights({...castlingRights, q: false});
-        if (board[7][7] !== black.rook) setCastlingRights({...castlingRights, k: false});
-        if (board[7][4] !== black.king) setCastlingRights({...castlingRights, q: false, k: false});
+        if (isWhiteTurn) {
+            // First white Rook or King moved
+            if (board[0][4] !== white.king) setCastlingRights({...castlingRights, Q: false, K: false});
+            else {
+                if (board[0][0] !== white.rook) setCastlingRights({...castlingRights, Q: false});
+                else if (board[0][7] !== white.rook) setCastlingRights({...castlingRights, K: false});
+            }
+        } else {
+            // First black Rook or King moved
+            if (board[7][4] !== black.king) setCastlingRights({...castlingRights, q: false, k: false}); else {
+                if (board[7][0] !== black.rook) setCastlingRights({...castlingRights, q: false});
+                else if (board[7][7] !== black.rook) setCastlingRights({...castlingRights, k: false});
+            }
+        }
     }
 
     const useAutoMove = (moves: string[], delay: number) => {
@@ -566,7 +586,7 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
         // Pawn: En passant capture
 		if ((newBoard[from[0]][from[1]] === white.pawn || 
 			newBoard[from[0]][from[1]] === black.pawn) && 
-			getPossibleMoves(newBoard, newBoard[from[0]][from[1]], prevMove, isWhiteTurn, castlingRights, from).some(p => p.from[0] === to[0] && p.from[1] === to[1] && p.isEnPassant === true)) {
+			getPossibleMoves(newBoard, newBoard[from[0]][from[1]], enPassentTarget, isWhiteTurn, castlingRights, from).some(p => p.from[0] === to[0] && p.from[1] === to[1] && p.isEnPassant === true)) {
 			let direction = newBoard[from[0]][from[1]] === white.pawn ? 1 : -1;
 			return removePiece(movePiece(newBoard, from, to), [to[0] - direction, to[1]]);
 		}
@@ -574,15 +594,15 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
     }
 
 	return { 
-		board, history, historyIndex, prevMove, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum, 
+		board, history, historyIndex, enPassentTarget, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum, 
         handleMove, updateBoard, move, useAutoMove,
         moveHistoryBackward, moveHistoryForward,
         useKeyDownEvent,
-		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], prevMove, isWhiteTurn, castlingRights, from)
+		getPossibleMoves: (from: [number, number]) => getPossibleMoves(board, board[from[0]][from[1]], enPassentTarget, isWhiteTurn, castlingRights, from)
 	};
 }
 
-export function getFenNotation(board: string[][], isWhiteTurn: boolean, castlingRights: CastlingRightsType, halfMovesNum: number, fullMovesNum: number) {
+export function getFenNotation(board: string[][], isWhiteTurn: boolean, castlingRights: CastlingRightsType, enPassentTarget: [number, number] | null, halfMovesNum: number, fullMovesNum: number) {
     let fen = '';
     for (let row = 7; row >= 0; row--) {
         let emptySquares = 0;
@@ -608,7 +628,13 @@ export function getFenNotation(board: string[][], isWhiteTurn: boolean, castling
     fen += ` ${isWhiteTurn ? 'w' : 'b'}`;
     const fenCastlingRights = `${castlingRights.K ? 'K' : ''}${castlingRights.Q ? 'Q' : ''}${castlingRights.k ? 'k' : ''}${castlingRights.q ? 'q' : ''}`;
     fen += ` ${fenCastlingRights || '-'}`;
-    fen += ` - ${halfMovesNum}`;
+    console.log('getFenNotation enPassentTarget', enPassentTarget);
+    if (enPassentTarget) {
+        fen += ` ${colChar(enPassentTarget[1]) + (enPassentTarget[0] + 1)}`;
+    } else fen += ` -`;
+    // console.log("getFenNotation enPassentTarget", enPassentTarget, colChar(enPassentTarget[1]) + (enPassentTarget ? (enPassentTarget[0] + 1) : ''));
+    
+    fen += ` ${halfMovesNum}`;
     fen += ` ${fullMovesNum}`;
     return fen;
 }
@@ -633,12 +659,12 @@ export function parseFenNotation(fen: string) {
     return { board, isWhiteTurn, castlingRights, halfMovesNum, fullMovesNum };
 }
 
-// function rowChar(row: number) {
-//     return String.fromCharCode(49 + row); // 49 is '1'; 0 -> '1', ..., 7 -> '8'
-// }
-// function colChar(col: number) {
-//     return String.fromCharCode(97 + col); // 97 is 'a'; 0 -> 'a', 1 -> 'b', ..., 7 -> 'h'
-// }
+function rowChar(row: number) {
+    return String.fromCharCode(49 + row); // 49 is '1'; 0 -> '1', ..., 7 -> '8'
+}
+function colChar(col: number) {
+    return String.fromCharCode(97 + col); // 97 is 'a'; 0 -> 'a', 1 -> 'b', ..., 7 -> 'h'
+}
 function rowNum(row: string) {
     return parseInt(row) - 1; // '1' -> 0, ..., '8' -> 7
 }

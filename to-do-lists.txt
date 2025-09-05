@@ -3,6 +3,6 @@ put a error boundary (so error doesn't stop the whole app)
 make toupperCase toLowerCase or toWhitePiece toBlackPiece available globally (more standardize) 
 make test so I don't have to worry about this anymore
 separate boardView logic to customHook (to run test) 
-
-rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-4rrk1/1b1p1pb1/pp4pp/2q4n/P2pP3/1B1P3P/1PP1N1P1/R1Q2RBK b - - 9 22
+debug CSS on phone browser
+add a error handling type functionality
+add en passant to pawn backward moves

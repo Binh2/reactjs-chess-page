@@ -28,3 +28,7 @@ yarn-error.log*
 *.crt
 
 *.env
+
+
+# It is useless right now because only I'm using it
+/src/Logger.ts 

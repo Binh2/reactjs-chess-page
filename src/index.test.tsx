@@ -4,7 +4,7 @@ import { render, screen, act, renderHook, waitFor } from '@testing-library/react
 import Game from './index'; 
 import { useBoard, getFenNotation } from './board';
 import { white, black } from './global'
-import fen from '../fen.json' with { type: 'json' };
+import fen from './fen.json' with { type: 'json' };
 
 describe('App', () => {
     // it('has white and black piece', () => {
@@ -18,12 +18,11 @@ describe('App', () => {
         // const { result: { current: { board } } } = renderHook(() => useBoard());
     });
     it('A whole game on useBoard()', () => {
-        const { result, rerender } = renderHook(() => useBoard({}));
-        for (const [i, f] of fen.entries()) {
-            console.log(f.move, f.fen);
-            result.current.move(f.move);
-            expect(getFenNotation(result.current.board, result.current.isWhiteTurn, result.current.castlingRights, result.current.halfMovesNum, result.current.fullMovesNum)).toBe(f.fen);
-            act(() => result.current.move(f.move));
+        const { result } = renderHook(() => useBoard({}));
+        for (const [i, { fen: f, move }] of fen.entries()) {
+            console.log(move, f);
+            act(() => result.current.move(move));
+            expect(getFenNotation(result.current.board, result.current.isWhiteTurn, result.current.castlingRights, result.current.enPassentTarget, result.current.halfMovesNum, result.current.fullMovesNum)).toBe(f);
         }
         // console.log('first isWhiteTurn', result.current.isWhiteTurn)
         // console.log(fen[0].move, fen[0].fen);

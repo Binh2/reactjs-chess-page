@@ -34,12 +34,13 @@ const moves = [
 	// "Qe4+", 
 	// "Kg7", "Qb7+", "f7", "Kf5", "Kg8", "Qg2+", "Kf8", "Kg6", "Ke8", "Qe4+", "Kf8", "Qa8+", "Ke7", "Qb7+", "Kf8", "Qc8+", "Ke7", "Qc5+", "Ke8", "Qc6+", "Kf8", "Kh7", "Ke7", "Qc7+", "Ke8", "Qc8+", "Ke7", "Qb7+",
 
-	"e4", "d6", "e5", "f5", 
-	"exf6", "Kd7", "fxg7", "Nf6", 
-	"gxh8=N"
+	// "e4", "d6", "e5", "f5", 
+	// "exf6", "Kd7", "fxg7", "Nf6", 
+	// "gxh8=N"
 
-	// "e4", "e5", "Bc4", "Bc5", "Nf3", "Nf6", 
-	// "O-O", "O-O"
+	"e4", "e5", "Bc4", "Bc5", "Nf3", "Nf6", 
+	"O-O", 
+	// "O-O"
 ] as string[];
 type SelectedPieceType = [number, number] | null;
 function Board() {

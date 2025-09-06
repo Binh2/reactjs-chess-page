@@ -8,8 +8,8 @@ export type PossibleMoveType = {
     from: [number, number],
     to: [number, number],
     // isCapture?: boolean,
-    isCastling?: boolean,
-    isEnPassant?: boolean,
+    // isCastling?: boolean,
+    // isEnPassant?: boolean,
     newPiece?: string,
     child?: PossibleMoveType
 }
@@ -60,7 +60,7 @@ export function pawnForwardMoves(board: BoardType, from: [number, number], isWhi
             from: [capturedPieceRow, capturedPieceCol],
             to: [capturedPieceRow, capturedPieceCol]
         };
-        moves.push({ type: 'move', from, to: [toRow, toCol], child, isEnPassant: true }); // true indicates en passant
+        moves.push({ type: 'move', from, to: [toRow, toCol], child }); // true indicates en passant
     }
     // Pawn: En passant captures from right to left
     if (!enPassantTarget) return moves;
@@ -75,33 +75,33 @@ export function pawnForwardMoves(board: BoardType, from: [number, number], isWhi
             from: [capturedPieceRow, capturedPieceCol] as [number, number],
             to: [capturedPieceRow, capturedPieceCol] as [number, number]
         };
-        moves.push({ type: 'move', from, to: [toRow, toCol], child, isEnPassant: true }); // true indicates en passant
+        moves.push({ type: 'move', from, to: [toRow, toCol], child }); // true indicates en passant
     }
     return moves;
 }
 export function pawnBackwardMoves(board: BoardType, to: [number, number], isWhiteTurn: boolean, enPassantTarget: [number, number] | null, promotionPiece?: string): PossibleMovesType {
-    let allowMoveOnSelf = true;
     let [toRow, toCol] = to;
-    let moves: PossibleMovesType = [];
     let direction = isWhiteTurn ? 1 : -1;
     let piece = isWhiteTurn ? white.pawn : black.pawn;
-    let allowedToSquares = allowMoveOnSelf ? [ '.', piece ] : [ '.' ];
+    let moves: PossibleMovesType = [];
 
     // Pawn: Move 1 square backward
     let fromRow = toRow - direction, fromCol = toCol;
-    if (allowedToSquares.includes(board[fromRow][fromCol]) &&
+    if (board[fromRow][fromCol] === piece &&
     board[toRow][toCol] === '.') {
         moves.push({ type: "move", from: [toRow - direction, toCol], to });
-    
-        // Pawn: Move 2 squares backward
-        fromRow = toRow - 2 * direction, fromCol = toCol;
-        if (allowedToSquares.includes(board[fromRow][fromCol]) && 
-        board[toRow][toCol] === '.' ||
-        ((isWhiteTurn && toRow - 2 * direction === 1) || 
-        (!isWhiteTurn && toRow - 2 * direction === 6))) {
-            moves.push({type: "move", from: [fromRow, fromCol], to });
-        }
     }
+    // Pawn: Move 2 squares backward
+    fromRow = toRow - 2 * direction, fromCol = toCol;
+    let middleRow = toRow - direction, middleCol = toCol;
+    if (board[fromRow][fromCol] === piece &&
+        board[middleRow][middleCol] === '.' &&
+        board[toRow][toCol] === '.' ||
+        ((isWhiteTurn && fromRow === 1) ||
+        (!isWhiteTurn && fromRow === 6))) {
+        moves.push({type: "move", from: [fromRow, fromCol], to });
+    }
+    
     // Pawn: Capture diagonally backward from right to left
     fromRow = toRow - direction, fromCol = toCol + 1;
     if (toCol < 7 && board[fromRow][fromCol] === piece &&
@@ -125,7 +125,7 @@ export function pawnBackwardMoves(board: BoardType, to: [number, number], isWhit
         ((isWhiteTurn && black.all.split('').includes(board[capturedPieceRow][capturedPieceCol])) || 
         (!isWhiteTurn && white.all.split('').includes(board[capturedPieceRow][capturedPieceCol])))) {
         const child: PossibleMoveType = { type: 'remove', from: [capturedPieceRow, capturedPieceCol], to: [capturedPieceRow, capturedPieceCol] };
-        moves.push({ type: 'move', from: [fromRow, fromCol], to, child, isEnPassant: true });
+        moves.push({ type: 'move', from: [fromRow, fromCol], to, child });
     }
 
     // Pawn: En passant capture from left to right
@@ -136,7 +136,7 @@ export function pawnBackwardMoves(board: BoardType, to: [number, number], isWhit
         ((isWhiteTurn && black.all.split('').includes(board[capturedPieceRow][capturedPieceCol])) ||
         (!isWhiteTurn && white.all.split('').includes(board[capturedPieceRow][capturedPieceCol])))) {
         const child: PossibleMoveType = { type: 'remove', from: [capturedPieceRow, capturedPieceCol], to: [capturedPieceRow, capturedPieceCol] };
-        moves.push({ type: 'move', from: [fromRow, fromCol], to, child, isEnPassant: true });
+        moves.push({ type: 'move', from: [fromRow, fromCol], to, child });
     }
 
     // Pawn: Promotion
@@ -293,28 +293,28 @@ export function kingCastlingMoves(board: BoardType, castlingRights: CastlingRigh
         board[0][0] === white.rook && board[0][1] === '.' && 
         board[0][2] === '.' && board[0][3] === '.' && board[0][4] === white.king) {
         const child: PossibleMoveType = { type: "move", from: [0, 0], to: [0, 3] };
-        moves.push({ type: 'move', from: [0, 4], to: [0, 2], isCastling: true, child });
+        moves.push({ type: 'move', from: [0, 4], to: [0, 2], child });
     }
     // White king: Kingside castling
     else if (castlingRights['K'] && 
         board[0][4] === white.king && board[0][5] === '.' && 
         board[0][6] === '.' && board[0][7] === white.rook) {
         const child: PossibleMoveType = { type: "move", from: [0, 7], to: [0, 5] };
-        moves.push({ type: 'move', from: [0, 4], to: [0, 6], isCastling: true, child });
+        moves.push({ type: 'move', from: [0, 4], to: [0, 6], child });
     } 
     // Black king: Queenside castling
     else if (castlingRights['q'] && 
         board[7][0] === black.rook && board[7][1] === '.' && 
         board[7][2] === '.' && board[7][3] === '.' && board[7][4] === black.king) {
         const child: PossibleMoveType = { type: "move", from: [7, 0], to: [7, 3] };
-        moves.push({ type: 'move', from: [7, 4], to: [7, 2], isCastling: true, child });
+        moves.push({ type: 'move', from: [7, 4], to: [7, 2], child });
     } 
     // Black king: Kingside castling
     else if (castlingRights['k'] && 
         board[7][4] === black.king && board[7][5] === '.' && 
         board[7][6] === '.' && board[7][7] === black.rook ) {
         const child: PossibleMoveType = { type: "move", from: [7, 7], to: [7, 5] };
-        moves.push({ type: 'move', from: [7, 4], to: [7, 6], isCastling: true, child });
+        moves.push({ type: 'move', from: [7, 4], to: [7, 6], child });
     }
     return moves;
 }
@@ -322,19 +322,19 @@ export function kingCastlingBackwardMoves(board: BoardType, type: string, isWhit
     if (isWhiteTurn && type === 'longCastle' && castlingRights['Q'] && 
         board[0][0] === white.rook && board[0][1] === '.' && board[0][2] === '.' && board[0][3] === '.' && board[0][4] == white.king) {
         const child: PossibleMoveType = { type: "move", from: [0, 0], to: [0, 3] };
-        return [ { type: 'move', from: [0, 4], to: [0, 2], isCastling: true, child } ];
+        return [ { type: 'move', from: [0, 4], to: [0, 2], child } ];
     } else if (isWhiteTurn && type === 'shortCastle' && castlingRights['K'] &&
         board[0][4] == white.king && board[0][5] == '.' && board[0][6] == '.' && board[0][7] == white.rook) {
         const child: PossibleMoveType = { type: "move", from: [0, 7], to: [0, 5]};
-        return [ { type: 'move', from: [0, 4], to: [0, 6], isCastling: true, child } ];
+        return [ { type: 'move', from: [0, 4], to: [0, 6], child } ];
     } else if (!isWhiteTurn && type === 'longCastle' && castlingRights['q'] && 
         board[7][0] === black.rook && board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.' && board[7][4] == black.king) {
         const child: PossibleMoveType = { type: "move", from: [7, 0], to: [7, 3] };
-        return [ { type: 'move', from: [7, 4], to: [7, 2], isCastling: true, child } ];
+        return [ { type: 'move', from: [7, 4], to: [7, 2], child } ];
     } else if (!isWhiteTurn && type === 'shortCastle' && castlingRights['k'] &&
         board[7][4] == black.king && board[7][5] == '.' && board[7][6] == '.' && board[7][7] == black.rook) {
         const child: PossibleMoveType = { type: "move", from: [7, 7], to: [7, 5] };
-        return [ { type: 'move', from: [7, 4], to: [7, 6], isCastling: true, child } ];
+        return [ { type: 'move', from: [7, 4], to: [7, 6], child } ];
     }
     return [];
 }
@@ -529,11 +529,11 @@ export function useBoard({ initialBoard = _initialBoard, initialIsWhiteTurn = tr
             {move, fen: ""}
         ]);
         console.log('move() enPassantTarget isEnPassant', enPassantTarget, isEnPassant)
-        handleMove(possibleMoves[0],board, piece, from, to, isWhiteTurn, isCapture, promotionPiece, isCastling);
+        handleMove(possibleMoves[0],board, piece, from, to, isWhiteTurn, isCapture);
         console.log('\n\n')
 	}
 
-    function handleMove(possibleMove: PossibleMoveType, board: string[][], piece: string, from: [number, number], to: [number, number], isWhiteTurn: boolean, isCapture: boolean, promotionPiece?: string, isCastling?: boolean) {
+    function handleMove(possibleMove: PossibleMoveType, board: string[][], piece: string, from: [number, number], to: [number, number], isWhiteTurn: boolean, isCapture: boolean) {
         let newBoard = movePiece(board, from, to);
         if (possibleMove.child && possibleMove.child.type == 'move') {
             let { from, to } = possibleMove.child

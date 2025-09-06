@@ -17,17 +17,20 @@ function Square({ id='', key=0, className='', style={}, piece, row, col, onClick
 }
 
 const initialPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-// const initialPosition = 'r4rk1/1b1p1pb1/pp4pp/2q4n/P1BpP3/3P3P/1PP1N1PB/R1Q2R1K w - - 6 21';
+// const initialPosition = '4rrk1/1b3pb1/pp4pp/4q3/P2ppQP1/1B1P3P/1PP4K/R4RB1 b - - 0 26';
 const moves = [
 	// "e4", 
 	// "c5", 
 	// "Nf3", 
 	// "Nc6", "Bc4", "g6", "Ng5", "e6", 
 	// "O-O", 
-	// "Bg7", "d3", "a6", "a4", "Nf6", "Nf3", "h6", "Be3", "b6", "Qc1", "Ng4", "Bd2", "Qc7", "h3", "Nf6", "Nc3", "Nd4", "Nxd4", "cxd4", "Ne2", "e5", "f4", "Bb7", "fxe5", "Qxe5", "Bf4", "Qc5", "Kh1", "Nh5", "Bh2", "O-O", 
+	// "Bg7", "d3", "a6", "a4", "Nf6", "Nf3", "h6", "Be3", "b6", "Qc1", "Ng4", "Bd2", "Qc7", "h3", "Nf6", "Nc3", "Nd4", "Nxd4", 
+	// "cxd4", "Ne2", "e5", "f4", "Bb7", "fxe5", "Qxe5", "Bf4", "Qc5", "Kh1", "Nh5", "Bh2", "O-O", 
 	// "Bb3", 
 	// "Rae8", 
-	// "Bg1", "d5", "g4", "dxe4", "Kh2", "Qe5+", "Nf4", "Nxf4", "Qxf4", "exd3", "Bxd4", "Qxf4+", "Rxf4", "Re2+", "Kg1", "Bxd4+", "Rxd4", "dxc2", "Rc1", "Rfe8", "Bxc2", "Rg2+", "Kf1", "Ree2", "Bd3", "Rd2", "Rd7", "Rh2", "Ke1", "Rxb2", "Rxb7", "Rh1+", "Bf1", "b5", "Rb6", "b4", "Rxa6", "b3", "Rb6", "Ra2", "Rxb3", "Rxa4", "Kf2", "Rh2+", "Kg3", "Rd2", "Rf3", "Ra7", "Bc4", "Rd4", "Bb3", "Rb4", "Rcf1", "Rbb7", "Rf6", "Kg7", "Bd5", "Rc7", "Kh4", "Re7", "R6f4", "g5+", "Kh5", "gxf4", "Rxf4", "Ra5", "Rf5", "f6", "Bc4", "Rxf5+", "gxf5", "Re5", "Be6", "Re3", 
+	// "Bg1", "d5", "g4", "dxe4", "Kh2", "Qe5+", "Nf4", "Nxf4", "Qxf4", 
+	// "exd3", 
+	// "Bxd4", "Qxf4+", "Rxf4", "Re2+", "Kg1", "Bxd4+", "Rxd4", "dxc2", "Rc1", "Rfe8", "Bxc2", "Rg2+", "Kf1", "Ree2", "Bd3", "Rd2", "Rd7", "Rh2", "Ke1", "Rxb2", "Rxb7", "Rh1+", "Bf1", "b5", "Rb6", "b4", "Rxa6", "b3", "Rb6", "Ra2", "Rxb3", "Rxa4", "Kf2", "Rh2+", "Kg3", "Rd2", "Rf3", "Ra7", "Bc4", "Rd4", "Bb3", "Rb4", "Rcf1", "Rbb7", "Rf6", "Kg7", "Bd5", "Rc7", "Kh4", "Re7", "R6f4", "g5+", "Kh5", "gxf4", "Rxf4", "Ra5", "Rf5", "f6", "Bc4", "Rxf5+", "gxf5", "Re5", "Be6", "Re3", 
 	// "Kg4", 
 	// "Re1", "Bd7", "Rg1+", "Kf4", "h5", "Be8", "h4", "Bh5", "Kh6", "Bg4", "Rg3", "Ke4", "Kg5", "Kd5", "Rxg4", "hxg4", "Kxg4", "Ke6", "h3", "Kxf6", "h2", "Kg6", 
 	// "h1=Q", "f6", 
@@ -36,26 +39,30 @@ const moves = [
 
 	// "e4", "d6", "e5", "f5", 
 	// "exf6", "Kd7", "fxg7", "Nf6", 
+	// "h4", 'e5'
 	// "gxh8=N"
 
-	"e4", "e5", "Bc4", "Bc5", "Nf3", "Nf6", 
-	"O-O", 
+	// "e4", "e5", "Bc4", "Bc5", "Nf3", "Nf6", 
+	// "O-O", 
 	// "O-O"
 ] as string[];
 type SelectedPieceType = [number, number] | null;
+function usePromotion() {
+	const [ promotionSquare, setPromotionSquare ] = useState<[number, number] | null>(null);
+	return { promotionSquare, setPromotionSquare };
+}
 function Board() {
 	const [ selected, setSelected ] = useState<SelectedPieceType>(null);
 	const [ possibleMoves, setPossibleMoves ] = useState<PossibleMovesType>([]);
-	const [ promotionSquare, setPromotionSquare ] = useState<{piece: string, at: [number, number]} | null>(null);
+	const { promotionSquare, setPromotionSquare } = usePromotion();
 	const [ moveInput, setMoveInput ] = useState('');
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const { board: initialBoard, isWhiteTurn: initialIsWhiteTurn, castlingRights: initialCastlingRights } = parseFenNotation(initialPosition);
-	const { board, enPassantTarget, isWhiteTurn, castlingRights, historyIndex, halfMovesNum, fullMovesNum, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, updateBoard, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard, initialIsWhiteTurn, initialCastlingRights });
+	const { board, enPassantTarget, isWhiteTurn, castlingRights, historyIndex, halfMovesNum, fullMovesNum, move, useAutoMove, useKeyDownEvent, handleMove, getPossibleMoves, moveHistoryBackward, moveHistoryForward } = useBoard({ initialBoard, initialIsWhiteTurn, initialCastlingRights });
 
 	useAutoMove(moves, 10);
 	console.log(getFenNotation(board, isWhiteTurn, castlingRights, enPassantTarget, halfMovesNum, fullMovesNum))
 	function handleKeyDown(event: React.KeyboardEvent) {
-		// if (DEBUG) debugger;
 		if ('abcdefgh12345678'.includes(event.key)) {
 			if (inputRef.current) {
 				inputRef.current.focus();
@@ -65,7 +72,6 @@ function Board() {
 	useKeyDownEvent();
 
 	useEffect(() => {
-		// console.log('historyIndex: ', historyIndex)
 		document.addEventListener('keydown', e => handleKeyDown(e as any));
 		return () => document.removeEventListener('keydown', e => handleKeyDown(e as any));
 	}, [handleKeyDown, isWhiteTurn, board, historyIndex]);
@@ -128,19 +134,30 @@ function Board() {
 
 		// Pawn: Promotion
 		if (board[selected[0]][selected[1]] === white.pawn && row === 7) {
-			setPromotionSquare({piece: white.pawn, at: [row, col]});
+			setPromotionSquare([row, col]);
 			return;
 		} else if (board[selected[0]][selected[1]] === black.pawn && row === 0) {
-			setPromotionSquare({piece: black.pawn, at: [row, col]});
+			setPromotionSquare([row, col]);
 			return;
 		} 
 		// Click on possible square to move piece
 		else {
 			console.log('handle move')
-			// const posisibleMove = getPossibleMoves(selected).filter()
+			const filteredPossibleMoves = possibleMoves.filter(p => {
+				return p.from[0] === selected[0] && p.from[1] === selected[1] &&
+					p.to[0] === row && p.to[1] === col;
+			});
+			if (!filteredPossibleMoves || 
+				(filteredPossibleMoves && filteredPossibleMoves.length === 0) || 
+				(filteredPossibleMoves && filteredPossibleMoves.length > 1)) {
+				console.error("Possible move not found", possibleMoves, selected, [row, col]);
+				setSelected(null);
+				setPossibleMoves([]);
+				return;
+			}
 			handleMove(
-				{ type: "move", from: selected, to: [row, col] },
-				board, board[selected[0]][selected[1]], selected, [row, col], isWhiteTurn, board[row][col] !== '.' ? true : false);
+				filteredPossibleMoves[0],
+				board, isWhiteTurn, board[row][col] !== '.' ? true : false);
 		}
 		
 		setSelected(null);
@@ -152,9 +169,25 @@ function Board() {
 		if (!promotionSquare) return;
 		if (!selected) return; // for testing
 
-		let newBoard = movePiece(board, selected, promotionSquare.at);
-		newBoard[promotionSquare.at[0]][promotionSquare.at[1]] = newPiece;
-		updateBoard(newBoard);
+		// let newBoard = movePiece(board, selected, promotionSquare);
+		// newBoard[promotionSquare[0]][promotionSquare[1]] = newPiece;
+		// updateBoard(newBoard);
+		const filteredPossibleMoves = possibleMoves.filter(p => {
+			return p.from[0] === selected[0] && p.from[1] === selected[1] &&
+				p.to[0] === promotionSquare[0] && p.to[1] === promotionSquare[1];
+		});
+		if (!filteredPossibleMoves || 
+			(filteredPossibleMoves && filteredPossibleMoves.length === 0) || 
+			(filteredPossibleMoves && filteredPossibleMoves.length > 1)) {
+			console.error("Possible move not found", possibleMoves, selected, promotionSquare);
+			setSelected(null);
+			setPossibleMoves([]);
+			setPromotionSquare(null);
+			return;
+		}
+		handleMove(
+			{ ...filteredPossibleMoves[0], child: { ...filteredPossibleMoves[0], newPiece 	} },
+			board, isWhiteTurn, board[promotionSquare[0]][promotionSquare[1]] !== '.' ? true : false);
 		setSelected(null);
 		setPromotionSquare(null);
 		setPossibleMoves([]);
@@ -176,7 +209,7 @@ function Board() {
 				) } </>
 			</div>
 		</LabeledBoard>
-		{ promotionSquare && <PromotionMenu piece={promotionSquare.piece} at={promotionSquare.at} onMouseDown={handlePromotion} /> }
+		{ promotionSquare && <PromotionMenu isWhiteTurn={isWhiteTurn} at={promotionSquare} onMouseDown={handlePromotion} /> }
 		<div>
 			<span>Move: </span>
 			<input type="test" value={moveInput} onChange={e => { 
@@ -216,22 +249,22 @@ function LabeledBoard({children: boardChildren}: {children: React.ReactNode}) {
 		</div>
 	);
 }
-function PromotionMenu({ piece, at, onMouseDown }: { piece: string, at: [number, number], onMouseDown: (newPiece: string) => void }) {
-	const direction = piece === white.pawn ? -1 : 1;
+function PromotionMenu({ isWhiteTurn, at, onMouseDown }: { isWhiteTurn: boolean, at: [number, number], onMouseDown: (newPiece: string) => void }) {
+	const direction = isWhiteTurn ? -1 : 1;
 	console.log(at)
 	return <div className="promotion-menu">
 		<Square style={{gridRow: at[0]+1, gridColumn: at[1]+1}} 
 			piece={white.queen} row={at[0]} col={at[1]}
-			onClick={() => onMouseDown(piece === white.pawn ? white.queen : black.queen)} />
+			onClick={() => onMouseDown(isWhiteTurn ? white.queen : black.queen)} />
 		<Square style={{gridRow: at[0]+1-direction, gridColumn: at[1]+1}} 
 			piece={white.rook} row={at[0]} col={at[1]} 
-			onClick={() => onMouseDown(piece === white.pawn ? white.rook : black.rook)} />
+			onClick={() => onMouseDown(isWhiteTurn ? white.rook : black.rook)} />
 		<Square style={{gridRow: at[0]+1-direction*2, gridColumn: at[1]+1}} 
 			piece={white.bishop} row={at[0]} col={at[1]} 
-			onClick={() => onMouseDown(piece === white.pawn ? white.bishop : black.bishop)}  />
+			onClick={() => onMouseDown(isWhiteTurn ? white.bishop : black.bishop)}  />
 		<Square style={{gridRow: at[0]+1-direction*3, gridColumn: at[1]+1}} 
 			piece={white.knight} row={at[0]} col={at[1]} 
-			onClick={() => onMouseDown(piece === white.pawn ? white.knight : black.knight)}  />
+			onClick={() => onMouseDown(isWhiteTurn ? white.knight : black.knight)}  />
 	</div>;
 }
 

@@ -1,10 +1,9 @@
-change name of handleMove (because theres 3 move function)
 put a error boundary (so error doesn't stop the whole app)
 make boardView test so I don't have to worry about this anymore
 separate boardView logic to customHook (to run test) 
 add a error handling type functionality
 separate promotion logic from Board component
-chagen pieceBackwardMoves to pieceMovesTo
-make the boardView castling wwork again
 separate promotion from boardView (important, less headache)
 separate history from useBoard (less clutter)
+add conditions to parseMove
+change the css on board promotionMenu because it not align

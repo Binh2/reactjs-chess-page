@@ -23,7 +23,10 @@ export const white = {
 	rook: 'R',
 	bishop: 'B',
 	knight: 'N',
-	pawn: 'P'
+	pawn: 'P',
+	all: 'KQRBNP',
+	turnWhite: (piece: string) => piece.toUpperCase(),
+	isWhite: (piece: string) => piece === piece.toUpperCase() && piece !== '.'
 };
 export const black = {
 	king: 'k',
@@ -31,7 +34,10 @@ export const black = {
 	rook: 'r',
 	bishop: 'b',
 	knight: 'n',
-	pawn: 'p'
+	pawn: 'p',
+	all: 'kqrbnp',
+	turnBlack: (piece: string) => piece.toLowerCase(),
+	isBlack: (piece: string) => piece === piece.toLowerCase() && piece !== '.'
 };
 
 export const displayPiece: Record<string, string> = {

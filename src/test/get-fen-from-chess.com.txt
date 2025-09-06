@@ -1,0 +1,22 @@
+
+(async function () {
+	let results = [];
+	let t = 500
+	for (let i = 0; i < 170; i += 1) {
+		try {
+			document.querySelector('.game-controls-secondary-button-icon.icon-font-chess.share').click();
+			await delay(t);
+			let result = document.querySelector('.cc-input-component.cc-input-medium.cc-input-group-space-append').value;
+			console.log(i / 2, result);
+			results.push(result)
+			document.querySelector('[class="cc-close-button-component cc-close-button-large cc-close-button-default cc-transition-color-hover cc-modal-header-close"]').click();
+			document.querySelector('[aria-label="Next Move"]').click();
+		} catch (e) {
+			t += 250;
+		}
+	}
+	console.log(results);
+})();
+async function delay(t) {
+	return new Promise(resolve => setTimeout(resolve, t));
+}

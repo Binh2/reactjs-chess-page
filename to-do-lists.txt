@@ -6,3 +6,13 @@ separate boardView logic to customHook (to run test)
 debug CSS on phone browser
 add a error handling type functionality
 add en passant to pawn backward moves
+separate promotion logic from Board component
+remove updateOtherPawnAfterEnPassant by generalize a "move"
+change kingCastlingBackward conditional statement to not allowed some weird move
+chagen pieceBackwardMoves to pieceMovesTo
+remove updateRookAfterCastling because it's dulicated with the other function
+remove isEnPassant and isCastling
+make the boardView castling wwork again
+remove allowMoveOnSelf inside function pawnBackwardMoves
+separate promotion from boardView (important, less headache)
+separate history from useBoard (less clutter)

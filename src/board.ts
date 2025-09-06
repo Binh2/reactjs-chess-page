@@ -286,31 +286,31 @@ export function kingNormalMoves(board: BoardType, from: [number, number], isWhit
     }
     return moves;
 }
-export function kingCastlingMoves(board: BoardType, castlingRights: CastlingRightsType) {
+export function kingCastlingMoves(board: BoardType, isWhiteTurn: boolean, castlingRights: CastlingRightsType) {
     let moves: PossibleMovesType = [];
     // White king: Queenside castling
-    if (castlingRights['Q'] && 
+    if (isWhiteTurn && castlingRights['Q'] && 
         board[0][0] === white.rook && board[0][1] === '.' && 
         board[0][2] === '.' && board[0][3] === '.' && board[0][4] === white.king) {
         const child: PossibleMoveType = { type: "move", from: [0, 0], to: [0, 3] };
         moves.push({ type: 'move', from: [0, 4], to: [0, 2], child });
     }
     // White king: Kingside castling
-    else if (castlingRights['K'] && 
+    else if (isWhiteTurn && castlingRights['K'] && 
         board[0][4] === white.king && board[0][5] === '.' && 
         board[0][6] === '.' && board[0][7] === white.rook) {
         const child: PossibleMoveType = { type: "move", from: [0, 7], to: [0, 5] };
         moves.push({ type: 'move', from: [0, 4], to: [0, 6], child });
     } 
     // Black king: Queenside castling
-    else if (castlingRights['q'] && 
+    else if (!isWhiteTurn && castlingRights['q'] && 
         board[7][0] === black.rook && board[7][1] === '.' && 
         board[7][2] === '.' && board[7][3] === '.' && board[7][4] === black.king) {
         const child: PossibleMoveType = { type: "move", from: [7, 0], to: [7, 3] };
         moves.push({ type: 'move', from: [7, 4], to: [7, 2], child });
     } 
     // Black king: Kingside castling
-    else if (castlingRights['k'] && 
+    else if (!isWhiteTurn && castlingRights['k'] && 
         board[7][4] === black.king && board[7][5] === '.' && 
         board[7][6] === '.' && board[7][7] === black.rook ) {
         const child: PossibleMoveType = { type: "move", from: [7, 7], to: [7, 5] };
@@ -343,7 +343,7 @@ export function kingMoves(board: BoardType, from: [number, number], isWhiteTurn:
     let moves: PossibleMovesType = [];
 
     moves.push(...kingNormalMoves(board, from, isWhiteTurn));
-    moves.push(...kingCastlingMoves(board, castlingRights));
+    moves.push(...kingCastlingMoves(board, isWhiteTurn, castlingRights));
     return moves;
 }
 export function getPossibleMoves(board: BoardType, piece: string, enPassantTarget: [number, number] | null, isWhiteTurn: boolean, castlingRights: CastlingRightsType, from: [number, number] ) {
